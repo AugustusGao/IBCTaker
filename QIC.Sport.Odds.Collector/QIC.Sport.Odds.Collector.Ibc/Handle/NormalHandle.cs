@@ -7,6 +7,7 @@ using log4net;
 using ML.Infrastructure.IOC;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using QIC.Sport.Odds.Collector.Cache.CacheEntity;
 using QIC.Sport.Odds.Collector.Cache.CacheManager;
 using QIC.Sport.Odds.Collector.Core.Handle;
 using QIC.Sport.Odds.Collector.Core.MatchWorkerManager;
@@ -29,14 +30,21 @@ namespace QIC.Sport.Odds.Collector.Ibc.Handle
             var pm = pd.Param as NormalParam;
             var jArray = FormatToJArray(pd.Data);
 
+            MatchEntity currentMatchEntity;
+            bool isNext = false;
             foreach (var item in jArray)
             {
+
+
                 if (item.ToString().Contains("type"))
                 {
                     switch (item["type"].ToString())
                     {
                         //如果type是m，包含的match对象
-                        case "m": DealMatchInfo(item, pm); break;
+                        case "m":
+                            currentMatchEntity = DealMatchInfo(item, pm);
+                            isNext = true;
+                            break;
                         //如果type是o，包含的odds对象
                         case "o": DealOddsInfo(item, pm); break;
                         //如果type是dm,说明该场比赛结束了，可以删除了
@@ -67,7 +75,7 @@ namespace QIC.Sport.Odds.Collector.Ibc.Handle
 
                 var kom = keepOdds.GetOrAdd(old.SrcMatchId);
                 if (kom == null) return;
-                kom.deleteOddsIdList(old.MarketID, new List<string>() { oddsId });
+                kom.DeleteOddsIdList(old.MarketID, new List<string>() { oddsId });
             }
             catch (Exception e)
             {
@@ -148,14 +156,14 @@ namespace QIC.Sport.Odds.Collector.Ibc.Handle
             }
         }
 
-        private void DealMatchInfo(JToken jtoken, NormalParam normalParam)
+        private MatchEntity DealMatchInfo(JToken jtoken, NormalParam normalParam)
         {
             try
             {
                 //解析比赛信息
                 var pmi = new ParseMatchInfo();
                 pmi.CompareSet(jtoken);
-                if (pmi.SportType == null) return;
+                if (pmi.SportType == null) return null;
 
                 var sportId = IbcTools.ConvertToSportId(pmi.SportType);
                 var matchDate = GetTime(pmi.KickOffTime);
@@ -179,10 +187,12 @@ namespace QIC.Sport.Odds.Collector.Ibc.Handle
                 var str = JsonConvert.SerializeObject(pmi, jsetting);
 
                 Console.WriteLine("market = " + str);
+                return me;
             }
             catch (Exception e)
             {
                 logger.Error(e.ToString());
+                return null;
             }
         }
 

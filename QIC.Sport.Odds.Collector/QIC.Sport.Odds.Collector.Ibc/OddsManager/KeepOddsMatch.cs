@@ -10,7 +10,7 @@ namespace QIC.Sport.Odds.Collector.Ibc.OddsManager
     public class KeepOddsMatch
     {
         ConcurrentDictionary<int, List<string>> dicOddsId = new ConcurrentDictionary<int, List<string>>();
-        public void deleteOddsIdList(int marketID, List<string> list)
+        public void DeleteOddsIdList(int marketID, List<string> list)
         {
             List<string> oddsIdList;
             if (dicOddsId.TryGetValue(marketID, out oddsIdList))
@@ -55,6 +55,12 @@ namespace QIC.Sport.Odds.Collector.Ibc.OddsManager
             }
 
             return list;
+        }
+        public bool GetRowNum(out int rowNum, out int htRowNum)
+        {
+            rowNum = dicOddsId.Where(kv => kv.Key == 1 || kv.Key == 3).Max(kv => kv.Value.Count);
+            htRowNum = dicOddsId.Where(kv => kv.Key == 2 || kv.Key == 4).Max(kv => kv.Value.Count);
+            return true;
         }
     }
 }
