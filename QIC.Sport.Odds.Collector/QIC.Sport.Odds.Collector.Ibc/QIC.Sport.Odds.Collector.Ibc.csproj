@@ -1,0 +1,125 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{2C7030A4-16A0-4AD2-80F2-A8DC103ECE5C}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>QIC.Sport.Odds.Collector.Ibc</RootNamespace>
+    <AssemblyName>QIC.Sport.Odds.Collector.Ibc</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="HtmlAgilityPack, Version=1.7.2.0, Culture=neutral, PublicKeyToken=bd319b19eaf3b43a, processorArchitecture=MSIL">
+      <HintPath>..\packages\HtmlAgilityPack.1.7.2\lib\Net45\HtmlAgilityPack.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="log4net">
+      <HintPath>..\..\..\..\lib\log4net.dll</HintPath>
+    </Reference>
+    <Reference Include="ML.EGP.Sport.Common">
+      <HintPath>..\..\..\..\..\ML.Sport\Code\lib\ML.EGP.Sport.Common.dll</HintPath>
+    </Reference>
+    <Reference Include="ML.EGP.Sport.Common.Enums">
+      <HintPath>..\..\..\..\lib\ML.EGP.Sport.Common.Enums.dll</HintPath>
+    </Reference>
+    <Reference Include="ML.Infrastructure">
+      <HintPath>..\..\..\..\lib\ML.Infrastructure.dll</HintPath>
+    </Reference>
+    <Reference Include="ML.NetComponent">
+      <HintPath>..\..\..\..\lib\ML.NetComponent.dll</HintPath>
+    </Reference>
+    <Reference Include="ML.Security">
+      <HintPath>..\..\..\..\..\Sport\lib\ML.Security.dll</HintPath>
+    </Reference>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>..\..\..\..\lib\Newtonsoft.Json.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+    <Reference Include="websocket-sharp-with-proxy-support">
+      <HintPath>..\..\..\..\lib\websocket-sharp-with-proxy-support.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Dto\DataMessageDto.cs" />
+    <Compile Include="Dto\ParseMatchInfo.cs" />
+    <Compile Include="Dto\ParseOddsInfo.cs" />
+    <Compile Include="Dto\PullDataDto.cs" />
+    <Compile Include="Dto\PushDataDto.cs" />
+    <Compile Include="Dto\SocketInitDto.cs" />
+    <Compile Include="Dto\SrcMarketEntityBase.cs" />
+    <Compile Include="Enum.cs" />
+    <Compile Include="Handle\HandleFactory.cs" />
+    <Compile Include="Handle\NormalHandle.cs" />
+    <Compile Include="IbcSubscriptionManager.cs" />
+    <Compile Include="IbcWorkManager.cs" />
+    <Compile Include="OddsManager\KeepOdds.cs" />
+    <Compile Include="OddsManager\KeepOddsManager.cs" />
+    <Compile Include="OddsManager\KeepOddsMatch.cs" />
+    <Compile Include="Param\BaseParam.cs" />
+    <Compile Include="Param\LoginParam.cs" />
+    <Compile Include="Param\NormalParam.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Taker\PullTaker.cs" />
+    <Compile Include="Taker\PushTaker.cs" />
+    <Compile Include="Taker\WebSocket\BaseWebSocketClient.cs" />
+    <Compile Include="Taker\WebSocket\EventArgs\CloseEventArgs.cs" />
+    <Compile Include="Taker\WebSocket\EventArgs\HandShakeEventArgs.cs" />
+    <Compile Include="Taker\WebSocket\EventArgs\MessageReceiveEventArgs.cs" />
+    <Compile Include="Taker\WebSocket\IWebSocketClient.cs" />
+    <Compile Include="Tools\IbcTools.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="app.config" />
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\QIC.Sport.Odds.Collector.Cache\QIC.Sport.Odds.Collector.Cache.csproj">
+      <Project>{7bdfcdb2-baac-4e16-ae5b-3afc5776a681}</Project>
+      <Name>QIC.Sport.Odds.Collector.Cache</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\QIC.Sport.Odds.Collector.Common\QIC.Sport.Odds.Collector.Common.csproj">
+      <Project>{9ec7b76a-e7bd-4c75-bb39-dc85ef270d35}</Project>
+      <Name>QIC.Sport.Odds.Collector.Common</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\QIC.Sport.Odds.Collector.Core\QIC.Sport.Odds.Collector.Core.csproj">
+      <Project>{416594e4-31f5-4d52-a826-a54017b7b6fc}</Project>
+      <Name>QIC.Sport.Odds.Collector.Core</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>
