@@ -24,7 +24,6 @@ namespace QIC.Sport.Odds.Collector.Ibc.Dto
         public string HomeTeamId { get; set; }
 
         public string KickOffTime { get; set; }
-        public DateTime MatchDate { get; set; }
 
         public string InjuryTime { get; set; }
 

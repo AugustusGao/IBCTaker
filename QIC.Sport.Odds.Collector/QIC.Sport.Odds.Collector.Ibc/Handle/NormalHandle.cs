@@ -158,16 +158,21 @@ namespace QIC.Sport.Odds.Collector.Ibc.Handle
                 if (pmi.SportType == null) return;
 
                 var sportId = IbcTools.ConvertToSportId(pmi.SportType);
-                var me = matchEntityManager.AddOrGet(pmi.MatchId, sportId, 0);
-                me.Stage = normalParam.Stage;
-                me.LeagueName = pmi.LeagueName;
-                me.HomeName = pmi.HomeTeamName;
-                me.AwayName = pmi.AwayTeamName;
                 var matchDate = GetTime(pmi.KickOffTime);
                 var diffMinutes = matchDate.Minute % 5;
                 matchDate = matchDate.AddMinutes(5 - diffMinutes);
-                me.MatchDate = matchDate;
-                pmi.MatchDate = matchDate;
+
+                var me = matchEntityManager.GetOrAdd(pmi.MatchId, pmi.LeagueName, pmi.HomeTeamName, pmi.AwayTeamName, matchDate, sportId);
+
+                me.CompareToStage(normalParam.Stage);
+
+                //  todo Compare RowNum
+
+                //  if stage = 3
+                //  todo Compare CompareToScore
+                //  todo Compare CompareToCard
+                //  todo Compare CompareToTime
+                //  todo Compare CompareMarket
 
                 JsonSerializerSettings jsetting = new JsonSerializerSettings();
                 jsetting.NullValueHandling = NullValueHandling.Ignore;

@@ -16,14 +16,17 @@ using Newtonsoft.Json;
 
 namespace QIC.Sport.Odds.Collector.Cache.CacheEntity
 {
-    public class MatchEntity : IMatchEntity
+    public class MatchEntityBase
+    {
+        public string SrcLeague { get; set; }
+        public string SrcHome { get; set; }
+        public string SrcAway { get; set; }
+        public DateTime SrcMatchDate { get; set; }
+    }
+    public class MatchEntity : MatchEntityBase, IMatchEntity
     {
         public string SrcMatchID { get; set; }
         public int SportID { get; set; }
-        public string LeagueName { get; set; }
-        public string HomeName { get; set; }
-        public string AwayName { get; set; }
-        public DateTime MatchDate { get; set; }
         public int Phase { get; set; }
         public int LiveTime { get; set; }
         public int HomeScore { get; set; }
