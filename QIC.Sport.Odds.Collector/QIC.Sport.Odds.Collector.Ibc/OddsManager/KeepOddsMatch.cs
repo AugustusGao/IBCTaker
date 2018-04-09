@@ -16,6 +16,7 @@ namespace QIC.Sport.Odds.Collector.Ibc.OddsManager
             if (dicOddsId.TryGetValue(marketID, out oddsIdList))
             {
                 oddsIdList.RemoveAll(list.Contains);
+                if (!oddsIdList.Any()) dicOddsId.TryRemove(marketID, out oddsIdList);
             }
         }
 
@@ -30,7 +31,7 @@ namespace QIC.Sport.Odds.Collector.Ibc.OddsManager
             {
                 dicOddsId.AddOrUpdate(marketID, new List<string>(), (k, v) =>
                 {
-                    var addList = v.Except(list).ToList();
+                    var addList = list.Except(v).ToList();
                     if (addList.Any())
                         v.AddRange(addList);
                     return v;
@@ -38,7 +39,7 @@ namespace QIC.Sport.Odds.Collector.Ibc.OddsManager
             }
         }
 
-        public List<string> GetMarketList(int marketId = 0)
+        public List<string> GetOddsIdList(int marketId = 0)
         {
             List<string> list;
             if (marketId == 0)
@@ -58,8 +59,10 @@ namespace QIC.Sport.Odds.Collector.Ibc.OddsManager
         }
         public bool GetRowNum(out int rowNum, out int htRowNum)
         {
-            rowNum = dicOddsId.Where(kv => kv.Key == 1 || kv.Key == 3).Max(kv => kv.Value.Count);
-            htRowNum = dicOddsId.Where(kv => kv.Key == 2 || kv.Key == 4).Max(kv => kv.Value.Count);
+            var ft = dicOddsId.Where(kv => kv.Key == 1 || kv.Key == 3).ToArray();
+            var ht = dicOddsId.Where(kv => kv.Key == 2 || kv.Key == 4).ToArray();
+            rowNum = ft.Any() ? ft.Max(kv => kv.Value.Count) : 0;
+            htRowNum = ht.Any() ? ht.Max(kv => kv.Value.Count) : 0;
             return true;
         }
     }

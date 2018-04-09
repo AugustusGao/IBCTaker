@@ -12,6 +12,7 @@ namespace QIC.Sport.Odds.Collector.Ibc.Param
     {
         public int Stage { get; set; }
         public SocketParam SocketParam { get; set; }
+        public List<int> LimitMarketIdList = new List<int>() { 1, 2, 3, 4 };
         public string Topic
         {
             get { return string.Format("42[\"subscribe\",\"odds\",{0}]", JsonConvert.SerializeObject(SocketParam)); }

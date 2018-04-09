@@ -6,6 +6,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using log4net;
+using ML.EGP.Sport.CommandProtocol.Dto.TakeServer;
+using ML.Infrastructure.Config;
+using Newtonsoft.Json;
 using QIC.Sport.Odds.Collector.Cache.CacheEntity;
 
 namespace QIC.Sport.Odds.Collector.Cache.CacheManager
@@ -13,9 +16,10 @@ namespace QIC.Sport.Odds.Collector.Cache.CacheManager
     public class MatchEntityManager : IMatchEntityManager
     {
         private readonly ILog logger = LogManager.GetLogger(typeof(MatchEntityManager));
+        private int takeType = ConfigSingleton.CreateInstance().GetAppConfig<int>("CollectorType");
         private readonly ConcurrentDictionary<string, MatchEntity> matchDic = new ConcurrentDictionary<string, MatchEntity>();
         private readonly ConcurrentDictionary<int, string> matchIDAndSrcMatchID = new ConcurrentDictionary<int, string>();
-        private ILog _logger = LogManager.GetLogger(typeof(MatchEntityManager));
+
         /// <summary>
         /// 添加或者获取比赛对象
         /// </summary>
@@ -54,8 +58,8 @@ namespace QIC.Sport.Odds.Collector.Cache.CacheManager
             MatchEntity dto = matchDic.GetOrAdd(srcMatchID, new MatchEntity() { SrcMatchID = srcMatchID, SportID = sportID });
             bool isMatchDateChanged;
             bool isNewMatch = CheckMatch(srcMatchID, srcLeague, srcHome, srcAway, srcMatchDate, dto, out isMatchDateChanged);
-            //if (isNewMatch) SendSrcMatchInfo(dto, iR);
-            //else if (isMatchDateChanged) SendSrcMatchDate(dto, iR);
+            if (isNewMatch) SendSrcMatchInfo(dto);
+            else if (isMatchDateChanged) SendSrcMatchDate(dto);
             return dto;
         }
         public void MatchLink(string srcMatchID, int matchID)
@@ -168,6 +172,34 @@ namespace QIC.Sport.Odds.Collector.Cache.CacheManager
             }
             return isNewMatch;
         }
+        private void SendSrcMatchInfo(MatchEntity dto)
+        {
+            //生成传输对象
+            TakeSrcMatchInfoDto cmdDto = new TakeSrcMatchInfoDto
+            {
+                SportID = dto.SportID,
+                SrcMatchID = dto.SrcMatchID,
+                SrcHome = dto.SrcHome,
+                SrcAway = dto.SrcAway,
+                SrcLeague = dto.SrcLeague,
+                SrcMatchDate = dto.SrcMatchDate,
+                TakeType = takeType
 
+            };
+            LogManager.GetLogger("TestSend").Info(JsonConvert.SerializeObject(cmdDto));
+            //iR.Send(TakeServerCommand.SrcMatchInfo, cmdDto);
+        }
+        private void SendSrcMatchDate(MatchEntity dto)
+        {
+            var str = JsonConvert.SerializeObject(new TakeSrcMatchDateDto()
+            {
+                SrcMatchID = dto.SrcMatchID,
+                SrcMatchDate = dto.SrcMatchDate,
+                TakeType = takeType,
+                MatchID = dto.MatchID
+            });
+            LogManager.GetLogger("TestSend").Info(str);
+            //iR.Send(TakeServerCommand.SrcMatchDate, new TakeSrcMatchDateDto() { SrcMatchID = dto.SrcMatchID, SrcMatchDate = dto.SrcMatchDate, TakeType = takeType, MatchID = dto.MatchID });
+        }
     }
 }

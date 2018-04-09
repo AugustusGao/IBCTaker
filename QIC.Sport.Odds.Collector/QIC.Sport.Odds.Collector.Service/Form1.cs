@@ -3,14 +3,20 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using log4net;
 using QIC.Sport.Inplay.Collector.Core;
+using QIC.Sport.Odds.Collector.Cache.CacheManager;
+using QIC.Sport.Odds.Collector.Common;
 using QIC.Sport.Odds.Collector.Core;
 using QIC.Sport.Odds.Collector.Ibc;
+using QIC.Sport.Odds.Collector.Ibc.Dto;
+using QIC.Sport.Odds.Collector.Ibc.Handle;
+using QIC.Sport.Odds.Collector.Ibc.Param;
 
 namespace QIC.Sport.Odds.Collector.Service
 {
@@ -28,7 +34,7 @@ namespace QIC.Sport.Odds.Collector.Service
 
         private void btnInit_Click(object sender, EventArgs e)
         {
-            Console.SetOut(tw); 
+            Console.SetOut(tw);
             Task.Run(() =>
             {
                 reptile = Reptile.Instance();
@@ -55,6 +61,20 @@ namespace QIC.Sport.Odds.Collector.Service
             if (reptile != null)
                 reptile.Stop();
             System.Environment.Exit(System.Environment.ExitCode);
+        }
+
+        private void btnTest_Click(object sender, EventArgs e)
+        {
+            var path = @"C:\Users\Gaushee\Desktop\temp1.txt";
+            var txt = File.ReadAllText(path);
+            var handle = new NormalHandle();
+            var pm = new NormalParam()
+            {
+                Stage = 3,
+                TakeMode = TakeMode.Push
+            };
+            var data = new PushDataDto() { Data = txt, Param = pm, };
+            handle.ProcessData(data);
         }
     }
     public class TextBoxWriter : System.IO.TextWriter

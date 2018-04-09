@@ -46,7 +46,7 @@ namespace QIC.Sport.Odds.Collector.Ibc.Dto
                         case "oddsstatus": OddsStatus = jtoken[item.Name].ToString(); b = true; break;
                         case "odds1a": HomeOdds = jtoken[item.Name].ToString(); b = true; break;
                         case "odds2a": AwayOdds = jtoken[item.Name].ToString(); b = true; break;
-                        case "hdp1": Hdp1 = "-" + jtoken[item.Name].ToString(); b = true; break;
+                        case "hdp1": Hdp1 = jtoken[item.Name].ToString(); b = true; break;
                         case "hdp2": Hdp2 = jtoken[item.Name].ToString(); b = true; break;
                         default: break;
                     }

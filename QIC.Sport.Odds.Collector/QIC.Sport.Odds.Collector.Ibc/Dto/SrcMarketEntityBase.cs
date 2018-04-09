@@ -31,9 +31,9 @@ namespace QIC.Sport.Odds.Collector.Ibc.Dto
         {
             //Hdp = GetHdp(oddsArr[1]);
             decimal o;
-            if (decimal.TryParse(oddsArr[1], out o)) Hdp = o; else Hdp = null;
-            if (decimal.TryParse(oddsArr[2], out o)) HomeOdds = o; else HomeOdds = null;
-            if (decimal.TryParse(oddsArr[3], out o)) AwayOdds = o; else AwayOdds = null;
+            Hdp = string.IsNullOrEmpty(oddsArr[1]) ? Hdp : decimal.TryParse(oddsArr[1], out o) ? o : (decimal?)null;
+            HomeOdds = string.IsNullOrEmpty(oddsArr[2]) ? HomeOdds : decimal.TryParse(oddsArr[2], out o) ? o : (decimal?)null;
+            AwayOdds = string.IsNullOrEmpty(oddsArr[3]) ? AwayOdds : decimal.TryParse(oddsArr[3], out o) ? o : (decimal?)null;
         }
 
         internal override MarketEntityBase ToMarketEntity(int matchID, int stage)
@@ -51,11 +51,6 @@ namespace QIC.Sport.Odds.Collector.Ibc.Dto
                 AwayOdds = AwayOdds.Value
             };
         }
-
-        private decimal? GetHdp(string hdpStr)
-        {
-            throw new Exception();
-        }
     }
     internal class SrcMarket1X2 : SrcMarketEntityBase
     {
@@ -66,9 +61,9 @@ namespace QIC.Sport.Odds.Collector.Ibc.Dto
         internal override void SetOdds(string[] oddsArr)
         {
             decimal o;
-            if (decimal.TryParse(oddsArr[1], out o)) HomeOdds = o; else HomeOdds = null;
-            if (decimal.TryParse(oddsArr[2], out o)) Draw = o; else Draw = null;
-            if (decimal.TryParse(oddsArr[3], out o)) AwayOdds = o; else AwayOdds = null;
+            HomeOdds = string.IsNullOrEmpty(oddsArr[1]) ? HomeOdds : decimal.TryParse(oddsArr[1], out o) ? o : (decimal?)null;
+            Draw = string.IsNullOrEmpty(oddsArr[2]) ? Draw : decimal.TryParse(oddsArr[2], out o) ? o : (decimal?)null;
+            AwayOdds = string.IsNullOrEmpty(oddsArr[3]) ? AwayOdds : decimal.TryParse(oddsArr[3], out o) ? o : (decimal?)null;
         }
 
         internal override MarketEntityBase ToMarketEntity(int matchID, int stage)

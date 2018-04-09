@@ -62,7 +62,7 @@ namespace QIC.Sport.Odds.Collector.Ibc
                 rev = 0,
                 condition = new Condition()
                 {
-                    marketid = "L",
+                    marketid = "T",
                     sporttype = new[] { 1 },
                     bettype = new[] { 1, 3, 5, 7, 8, 15 },
                     sorting = "n"

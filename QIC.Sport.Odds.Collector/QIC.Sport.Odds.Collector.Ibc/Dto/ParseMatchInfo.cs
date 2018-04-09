@@ -34,6 +34,9 @@ namespace QIC.Sport.Odds.Collector.Ibc.Dto
         public string AwayRed { get; set; }
 
         public string HomeRed { get; set; }
+        public string Liveperiod { get; set; }
+        public string Livetimer { get; set; }
+        public string Csstatus { get; set; }
         public bool CompareSet(JToken jtoken)
         {
             bool b = false;
@@ -56,6 +59,9 @@ namespace QIC.Sport.Odds.Collector.Ibc.Dto
                         case "livehomescore": LiveHomeScore = jtoken[item.Name].ToString(); b = true; break;
                         case "awayred": AwayRed = jtoken[item.Name].ToString(); b = true; break;
                         case "homered": HomeRed = jtoken[item.Name].ToString(); b = true; break;
+                        case "liveperiod": Liveperiod = jtoken[item.Name].ToString(); b = true; break;
+                        case "livetimer": Livetimer = jtoken[item.Name].ToString(); b = true; break;
+                        case "csstatus": Csstatus = jtoken[item.Name].ToString(); b = true; break;
                         default: break;
                     }
                 }

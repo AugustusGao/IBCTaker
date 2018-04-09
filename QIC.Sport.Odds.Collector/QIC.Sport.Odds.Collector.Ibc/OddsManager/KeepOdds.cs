@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using QIC.Sport.Odds.Collector.Cache.CacheEntity;
 using QIC.Sport.Odds.Collector.Ibc.Dto;
 
 namespace QIC.Sport.Odds.Collector.Ibc.OddsManager
@@ -24,13 +25,13 @@ namespace QIC.Sport.Odds.Collector.Ibc.OddsManager
 
             return kom;
         }
-        
+
         public void UpdateMarket(string srcOddsId, string[] oddsArry)
         {
 
         }
 
-        public void RemoveSrcMatchId(string srcMatchId)
+        public void RemoveBySrcMatchId(string srcMatchId)
         {
             KeepOddsMatch k;
             dicSrcMatch.TryRemove(srcMatchId, out k);
@@ -57,6 +58,22 @@ namespace QIC.Sport.Odds.Collector.Ibc.OddsManager
             SrcMarketEntityBase b;
             dicMarket.TryGetValue(oddsId, out b);
             return b as T;
+        }
+
+        public Dictionary<long, MarketEntityBase> ToMarketEntityBases(List<string> oddsIdList, int matchId, int stage)
+        {
+            Dictionary<long, MarketEntityBase> dic = new Dictionary<long, MarketEntityBase>();
+            foreach (var id in oddsIdList)
+            {
+                SrcMarketEntityBase b;
+                if (dicMarket.TryGetValue(id, out b))
+                {
+                    var meb = b.ToMarketEntity(matchId, stage);
+                    dic.Add(meb.CouID, meb);
+                }
+            }
+
+            return dic;
         }
     }
 }

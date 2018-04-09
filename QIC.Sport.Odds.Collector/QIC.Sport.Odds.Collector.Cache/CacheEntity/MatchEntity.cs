@@ -36,13 +36,14 @@ namespace QIC.Sport.Odds.Collector.Cache.CacheEntity
         public int RowNum { get; set; }
         public int HTRowNum { get; set; }
         public int Stage { get; set; }
-        public int MatchID { get; set; }
+
+        public int MatchID = 100;
         //CouID-Market
         public Dictionary<long, MarketEntityBase> MarketDic { get; set; }
 
         public ITestSend Reptile = new TestSend();
 
-        private int takeType = ConfigSingleton.CreateInstance().GetAppConfig<int>("TakeType");
+        private int takeType = ConfigSingleton.CreateInstance().GetAppConfig<int>("CollectorType");
 
         private ILog _logger = LogManager.GetLogger(typeof(MatchEntity));
         public MatchEntity()
@@ -129,6 +130,13 @@ namespace QIC.Sport.Odds.Collector.Cache.CacheEntity
             sendList.ForEach(o => SendCoupon(marketDic[o]));
         }
 
+        public void CompareSingleMarket(MarketEntityBase marketEntityBase)
+        {
+            MarketEntityBase cmeb;
+            if (!MarketDic.TryGetValue(marketEntityBase.CouID, out cmeb)) return;
+            if (!cmeb.CompareSet(marketEntityBase)) return;
+            SendCoupon(cmeb);
+        }
 
         #region 比赛基础信息对比
 
@@ -404,7 +412,8 @@ namespace QIC.Sport.Odds.Collector.Cache.CacheEntity
     {
         public void Send<T>(TakeServerCommand tcmd, T data) where T : class, new()
         {
-            Console.WriteLine(tcmd + "", JsonConvert.SerializeObject(data));
+            //Console.WriteLine(tcmd + "", JsonConvert.SerializeObject(data));
+            LogManager.GetLogger("TestSend").Info(JsonConvert.SerializeObject(data));
         }
     }
 }
