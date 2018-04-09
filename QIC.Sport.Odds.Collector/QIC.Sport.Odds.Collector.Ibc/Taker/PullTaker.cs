@@ -398,7 +398,7 @@ namespace QIC.Sport.Odds.Collector.Ibc.Taker
                         {
                             //如果登录异常，就重新登录。
                             //  todo 检查心跳失败，重新订阅
-                            // LoginTask();
+                            //LoginTask();
                             return;
                             //string result = Instance.BeginLogin();
                             //if (!string.IsNullOrEmpty(result))
@@ -414,6 +414,7 @@ namespace QIC.Sport.Odds.Collector.Ibc.Taker
                     {
                         logger.Error(e.ToString());
                     }
+                    logger.Error("LoginCheck!!!");
                 }
             }
             catch (Exception e)

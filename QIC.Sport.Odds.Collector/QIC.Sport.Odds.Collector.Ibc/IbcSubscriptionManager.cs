@@ -62,13 +62,13 @@ namespace QIC.Sport.Odds.Collector.Ibc
                 rev = 0,
                 condition = new Condition()
                 {
-                    marketid = "T",
+                    marketid = "L",
                     sporttype = new[] { 1 },
                     bettype = new[] { 1, 3, 5, 7, 8, 15 },
                     sorting = "n"
                 }
             };
-            Subscribe(new NormalParam() { Stage = (int)MatchStageEnum.Today, TakeMode = TakeMode.Push, SocketParam = sp });
+            Subscribe(new NormalParam() { Stage = (int)MatchStageEnum.Live, TakeMode = TakeMode.Push, SocketParam = sp });
         }
 
         private void TakerWork()
@@ -150,7 +150,6 @@ namespace QIC.Sport.Odds.Collector.Ibc
         {
             if (e == null) return;
             string thisTopic = string.Empty;
-            logger.Debug("MatchMenuSubscription_MessageReceived = " + e.Data);
             if (string.IsNullOrEmpty(e.HeadInfo) || !e.HeadInfo.Contains("42")) return;
 
             bool isUpdate = false;
