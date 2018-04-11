@@ -45,8 +45,15 @@
       <HintPath>..\packages\Unity.3.5.1404.0\lib\net45\Microsoft.Practices.Unity.RegistrationByConvention.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="ML.EGP.Sport.CommandProtocol, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\..\ML.Sport\Code\lib\ML.EGP.Sport.CommandProtocol.dll</HintPath>
+    </Reference>
     <Reference Include="ML.Infrastructure">
       <HintPath>..\..\..\..\lib\ML.Infrastructure.dll</HintPath>
+    </Reference>
+    <Reference Include="ML.NetComponent">
+      <HintPath>..\..\..\..\lib\ML.NetComponent.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -60,7 +67,6 @@
     <Compile Include="Handle\BaseHandle.cs" />
     <Compile Include="Handle\IHandle.cs" />
     <Compile Include="Handle\IHandleFactory.cs" />
-    <Compile Include="ICollectorClientSocket.cs" />
     <Compile Include="IReptile.cs" />
     <Compile Include="MatchWorkerManager\BaseMatchWorkManager.cs" />
     <Compile Include="MatchWorkerManager\IMatchWorkManager.cs" />

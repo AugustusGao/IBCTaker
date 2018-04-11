@@ -68,9 +68,57 @@ namespace QIC.Sport.Odds.Collector.Ibc
                     sorting = "n"
                 }
             };
-            Subscribe(new NormalParam() { Stage = (int)MatchStageEnum.Live, TakeMode = TakeMode.Push, SocketParam = sp });
+
+            //Subscribe(new NormalParam() { Stage = (int)MatchStageEnum.Live, TakeMode = TakeMode.Push, SocketParam = sp });
+            GetAllParam().ForEach(Subscribe);
         }
 
+        private List<NormalParam> GetAllParam()
+        {
+            List<NormalParam> list = new List<NormalParam>();
+            SocketParam sp = new SocketParam()
+            {
+                id = "c13",
+                rev = 0,
+                condition = new Condition()
+                {
+                    marketid = "L",
+                    sporttype = new[] { 1 },
+                    bettype = new[] { 1, 3, 5, 7, 8, 15 },
+                    sorting = "n"
+                }
+            };
+            list.Add(new NormalParam() { Stage = (int)MatchStageEnum.Live, TakeMode = TakeMode.Push, SocketParam = sp });
+
+            sp = new SocketParam()
+            {
+                id = "c12",
+                rev = 0,
+                condition = new Condition()
+                {
+                    marketid = "T",
+                    sporttype = new[] { 1 },
+                    bettype = new[] { 1, 3, 5, 7, 8, 15 },
+                    sorting = "n"
+                }
+            };
+            list.Add(new NormalParam() { Stage = (int)MatchStageEnum.Today, TakeMode = TakeMode.Push, SocketParam = sp });
+
+            sp = new SocketParam()
+            {
+                id = "c11",
+                rev = 0,
+                condition = new Condition()
+                {
+                    marketid = "E",
+                    sporttype = new[] { 1 },
+                    bettype = new[] { 1, 3, 5, 7, 8, 15 },
+                    sorting = "n"
+                }
+            };
+            list.Add(new NormalParam() { Stage = (int)MatchStageEnum.Early, TakeMode = TakeMode.Push, SocketParam = sp });
+            return list;
+        }
         private void TakerWork()
         {
             while (true)

@@ -37,15 +37,15 @@ namespace QIC.Sport.Odds.Collector.Cache.CacheEntity
         public int HTRowNum { get; set; }
         public int Stage { get; set; }
 
-        public int MatchID = 100;
+        public int MatchID;
         //CouID-Market
         public Dictionary<long, MarketEntityBase> MarketDic { get; set; }
 
-        public ITestSend Reptile = new TestSend();
+        public ICommunicator Communicator;
 
-        private int takeType = ConfigSingleton.CreateInstance().GetAppConfig<int>("CollectorType");
+        private readonly int takeType = ConfigSingleton.CreateInstance().GetAppConfig<int>("CollectorType");
 
-        private ILog _logger = LogManager.GetLogger(typeof(MatchEntity));
+        private readonly ILog logger = LogManager.GetLogger(typeof(MatchEntity));
         public MatchEntity()
         {
             Phase = -1;
@@ -130,10 +130,17 @@ namespace QIC.Sport.Odds.Collector.Cache.CacheEntity
             sendList.ForEach(o => SendCoupon(marketDic[o]));
         }
 
-        public void CompareSingleMarket(MarketEntityBase marketEntityBase)
+        public void CompareSingleMarket(MarketEntityBase marketEntityBase, int stage)
         {
+            if (stage > 0 && stage != Stage) return;
+
             MarketEntityBase cmeb;
             if (!MarketDic.TryGetValue(marketEntityBase.CouID, out cmeb)) return;
+            if (cmeb == null)
+            {
+                logger.Error("CompareSingleMarket get null mk = " + JsonConvert.SerializeObject(marketEntityBase));
+                return;
+            }
             if (!cmeb.CompareSet(marketEntityBase)) return;
             SendCoupon(cmeb);
         }
@@ -165,7 +172,7 @@ namespace QIC.Sport.Odds.Collector.Cache.CacheEntity
             else
             {
                 //非正常切换阶段，倒退 记录Log
-                _logger.Error("Rewind the stage ,Match Stage = " + Stage + " , this stage = " + stage);
+                logger.Error("Rewind the stage ,Match Stage = " + Stage + " , this stage = " + stage + " ,SrcMatchId = " + SrcMatchID + " ,Home = " + SrcHome + " ,Away = " + SrcAway);
             }
             return true;
         }
@@ -302,7 +309,7 @@ namespace QIC.Sport.Odds.Collector.Cache.CacheEntity
             if (original == null) return;
             TDestination destination = (TDestination)original.ToTakeMarketDto(MatchID, takeType);
             destination.RowIndex = 1;
-            Reptile.Send(cmd, destination);
+            Communicator.Send(cmd, destination);
         }
         private void SendCloseCoupon(long couID)
         {
@@ -310,7 +317,7 @@ namespace QIC.Sport.Odds.Collector.Cache.CacheEntity
             var hdp = MarketTools.GetHdpByCouID(couID);
             var marketID = MarketTools.GetMarketIDByCouID(couID);
 
-            Reptile.Send(TakeServerCommand.MarketClose, new TakeMarketClose()
+            Communicator.Send(TakeServerCommand.MarketClose, new TakeMarketClose()
             {
                 CouID = MarketTools.CreateCouID(MatchID, marketID, hdp),
                 TakeType = takeType,
@@ -322,7 +329,7 @@ namespace QIC.Sport.Odds.Collector.Cache.CacheEntity
         private void SendRowNum()
         {
             if (MatchID != 0)
-                Reptile.Send(TakeServerCommand.MatchRowNum, new TakeMatchRowNumDto()
+                Communicator.Send(TakeServerCommand.MatchRowNum, new TakeMatchRowNumDto()
                 {
                     RowNum = RowNum,
                     HTRowNum = HTRowNum,
@@ -333,34 +340,34 @@ namespace QIC.Sport.Odds.Collector.Cache.CacheEntity
         private void SendScore()
         {
             if (MatchID != 0 && !(HomeScore <= -1) && !(AwayScore <= -1))
-                Reptile.Send(TakeServerCommand.MatchScore, new TakeMatchScoreDto()
+                Communicator.Send(TakeServerCommand.MatchScore, new TakeMatchScoreDto()
                 {
-                    HomeScore = this.HomeScore,
-                    AwayScore = this.AwayScore,
+                    HomeScore = HomeScore,
+                    AwayScore = AwayScore,
                     TakeType = takeType,
-                    MatchID = this.MatchID
+                    MatchID = MatchID
                 });
 
         }
         private void SendTime()
         {
             if (MatchID != 0)
-                Reptile.Send(TakeServerCommand.MatchLiveTime, new TakeMatchLiveTimeDto()
+                Communicator.Send(TakeServerCommand.MatchLiveTime, new TakeMatchLiveTimeDto()
                 {
-                    Phase = this.Phase,
-                    LiveTime = this.LiveTime,
-                    MatchID = this.MatchID,
+                    Phase = Phase,
+                    LiveTime = LiveTime,
+                    MatchID = MatchID,
                     TakeType = takeType
                 });
         }
         private void SendCard()
         {
             if (MatchID != 0)
-                Reptile.Send(TakeServerCommand.MatchRedCard, new TakeMatchRedCardDto()
+                Communicator.Send(TakeServerCommand.MatchRedCard, new TakeMatchRedCardDto()
                 {
-                    HomeCard = this.HomeCard,
-                    AwayCard = this.AwayCard,
-                    MatchID = this.MatchID,
+                    HomeCard = HomeCard,
+                    AwayCard = AwayCard,
+                    MatchID = MatchID,
                     TakeType = takeType
                 });
         }
@@ -368,7 +375,7 @@ namespace QIC.Sport.Odds.Collector.Cache.CacheEntity
         {
             if (MatchID != 0)
             {
-                Reptile.Send(TakeServerCommand.MatchStage, new TakeMatchStageDto()
+                Communicator.Send(TakeServerCommand.MatchStage, new TakeMatchStageDto()
                 {
                     MatchID = MatchID,
                     Stage = Stage,
@@ -379,41 +386,31 @@ namespace QIC.Sport.Odds.Collector.Cache.CacheEntity
 
         public void SendAll()
         {
-            //  发送Stage
-            SendStage();
-
-            //  发送比分
-            SendScore();
-
-            //  发送LiveTime
-            SendTime();
-
-            //  发送RowNum
-            SendRowNum();
-
-            //  发送红卡
-            SendCard();
-
-            //  发送盘口
-            foreach (var market in MarketDic.Values)
+            Task.Run(() =>
             {
-                SendCoupon(market);
-            }
+                //  发送Stage
+                SendStage();
+
+                //  发送比分
+                SendScore();
+
+                //  发送LiveTime
+                SendTime();
+
+                //  发送RowNum
+                SendRowNum();
+
+                //  发送红卡
+                SendCard();
+
+                //  发送盘口
+                foreach (var market in MarketDic.Values)
+                {
+                    SendCoupon(market);
+                }
+            });
         }
         #endregion
 
-    }
-    public interface ITestSend
-    {
-        void Send<T>(TakeServerCommand tcmd, T data) where T : class ,new();
-    }
-
-    public class TestSend : ITestSend
-    {
-        public void Send<T>(TakeServerCommand tcmd, T data) where T : class, new()
-        {
-            //Console.WriteLine(tcmd + "", JsonConvert.SerializeObject(data));
-            LogManager.GetLogger("TestSend").Info(JsonConvert.SerializeObject(data));
-        }
     }
 }

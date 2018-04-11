@@ -177,7 +177,7 @@ namespace QIC.Sport.Odds.Collector.Ibc.Handle
                         var me = matchEntityManager.Get(two.SrcMatchId);
                         if (me != null)
                         {
-                            me.CompareSingleMarket(two.ToMarketEntity(me.MatchID, normalParam.Stage));
+                            me.CompareSingleMarket(two.ToMarketEntity(0, normalParam.Stage), normalParam.Stage);
                         }
                         else
                         {
@@ -268,7 +268,7 @@ namespace QIC.Sport.Odds.Collector.Ibc.Handle
                 //  先发RowNum再发盘口
                 currentMatchEntity.CompareToRowNum(rowNum, htRowNum, param.Stage);
                 var oddsIdList = kom.GetOddsIdList();
-                var dic = keepOdds.ToMarketEntityBases(oddsIdList, currentMatchEntity.MatchID, param.Stage);
+                var dic = keepOdds.ToMarketEntityBases(oddsIdList, 0, param.Stage);
                 currentMatchEntity.CompareToMarket(dic, param.Stage, param.LimitMarketIdList);
             }
             else
