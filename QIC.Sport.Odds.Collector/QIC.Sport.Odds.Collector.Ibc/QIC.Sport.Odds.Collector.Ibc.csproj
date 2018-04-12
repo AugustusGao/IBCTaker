@@ -93,8 +93,8 @@
     <Compile Include="Taker\WebSocket\EventArgs\HandShakeEventArgs.cs" />
     <Compile Include="Taker\WebSocket\EventArgs\MessageReceiveEventArgs.cs" />
     <Compile Include="Taker\WebSocket\IWebSocketClient.cs" />
-    <Compile Include="TimeManager\LiveTimeInfo.cs" />
-    <Compile Include="TimeManager\LiveTimeManager.cs" />
+    <Compile Include="TimeManager\LiveInfo.cs" />
+    <Compile Include="TimeManager\LiveInfoManager.cs" />
     <Compile Include="Tools\IbcTools.cs" />
   </ItemGroup>
   <ItemGroup>
