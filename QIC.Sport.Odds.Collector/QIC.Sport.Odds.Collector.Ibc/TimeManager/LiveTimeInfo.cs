@@ -7,11 +7,15 @@ using QIC.Sport.Odds.Collector.Common;
 
 namespace QIC.Sport.Odds.Collector.Ibc.TimeManager
 {
-    public class LiveTimeInfo
+    public class LiveInfo
     {
         public string SrcMatchId;
-        public int Phase = -1;
+        public int? Phase = -1;
         public string PhaseStartUtc;
+        public int? HomeScore;
+        public int? AwayScore;
+        public int? HomeRed;
+        public int? AwayRed;
 
         public int LiveTime
         {
@@ -25,9 +29,11 @@ namespace QIC.Sport.Odds.Collector.Ibc.TimeManager
 
         public override bool Equals(object obj)
         {
-            LiveTimeInfo lti = obj as LiveTimeInfo;
-            if (lti == null) return true;
-            return Phase == lti.Phase && PhaseStartUtc == lti.PhaseStartUtc;
+            LiveInfo li = obj as LiveInfo;
+            if (li == null) return true;
+            return Phase == li.Phase && PhaseStartUtc == li.PhaseStartUtc
+                && HomeScore == li.HomeScore && AwayScore == li.AwayScore
+                && HomeRed == li.HomeRed && AwayRed == li.AwayRed;
         }
     }
 }

@@ -11,15 +11,15 @@ using QIC.Sport.Odds.Collector.Cache.CacheManager;
 
 namespace QIC.Sport.Odds.Collector.Ibc.TimeManager
 {
-    public class LiveTimeManager
+    public class LiveInfoManager
     {
-        private ILog logger = LogManager.GetLogger(typeof(LiveTimeManager));
-        ConcurrentDictionary<string, LiveTimeInfo> dicLiveTimeInfo = new ConcurrentDictionary<string, LiveTimeInfo>();
+        private ILog logger = LogManager.GetLogger(typeof(LiveInfoManager));
+        ConcurrentDictionary<string, LiveInfo> dicLiveTimeInfo = new ConcurrentDictionary<string, LiveInfo>();
         private static readonly MatchEntityManager matchEntityManager = IocUnity.GetService<IMatchEntityManager>("MatchEntityManager") as MatchEntityManager;
 
         private static readonly object lockObj = new object();
-        private static LiveTimeManager instance;
-        public static LiveTimeManager Instance
+        private static LiveInfoManager instance;
+        public static LiveInfoManager Instance
         {
             get
             {
@@ -29,7 +29,7 @@ namespace QIC.Sport.Odds.Collector.Ibc.TimeManager
                     {
                         if (instance == null)
                         {
-                            instance = new LiveTimeManager();
+                            instance = new LiveInfoManager();
                             instance.Init();
                         }
                     }
@@ -38,20 +38,27 @@ namespace QIC.Sport.Odds.Collector.Ibc.TimeManager
             }
         }
 
-        public void AddOrUpdate(LiveTimeInfo liveTimeInfo)
+        public LiveInfo AddOrUpdate(LiveInfo liveTimeInfo)
         {
+            LiveInfo ret = liveTimeInfo;
             dicLiveTimeInfo.AddOrUpdate(liveTimeInfo.SrcMatchId, liveTimeInfo, (k, v) =>
             {
                 if (v.Equals(liveTimeInfo)) return v;
-                v.Phase = liveTimeInfo.Phase;
-                v.PhaseStartUtc = liveTimeInfo.PhaseStartUtc;
+                v.Phase = liveTimeInfo.Phase ?? v.Phase;
+                v.PhaseStartUtc = string.IsNullOrEmpty(liveTimeInfo.PhaseStartUtc) ? v.PhaseStartUtc : liveTimeInfo.PhaseStartUtc;
+                v.HomeScore = liveTimeInfo.HomeScore ?? v.HomeScore;
+                v.AwayScore = liveTimeInfo.AwayScore ?? v.AwayScore;
+                v.HomeRed = liveTimeInfo.HomeRed ?? v.HomeRed;
+                v.AwayRed = liveTimeInfo.AwayRed ?? v.AwayRed;
+                ret = v;
                 return v;
             });
+            return ret;
         }
 
         public void RemoveBySrcMatchId(string srcMatchId)
         {
-            LiveTimeInfo lti;
+            LiveInfo lti;
             dicLiveTimeInfo.TryRemove(srcMatchId, out lti);
         }
 
@@ -81,12 +88,12 @@ namespace QIC.Sport.Odds.Collector.Ibc.TimeManager
                 var me = matchEntityManager.Get(timeInfo.Key);
                 if (me == null)
                 {
-                    logger.Error("LiveTimeManager SendLiveTime cannot find srcMatchId = " + timeInfo.Key);
+                    logger.Error("LiveInfoManager SendLiveTime cannot find srcMatchId = " + timeInfo.Key);
                     continue;
                 }
                 else
                 {
-                    me.CompareToTime(timeInfo.Value.Phase, timeInfo.Value.LiveTime);
+                    me.CompareToTime(timeInfo.Value.Phase.Value, timeInfo.Value.Phase == 0 ? 0 : timeInfo.Value.LiveTime);
                 }
             }
         }
