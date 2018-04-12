@@ -23,7 +23,7 @@ namespace QIC.Sport.Odds.Collector.Ibc.TimeManager
             {
                 if (string.IsNullOrEmpty(PhaseStartUtc) || Phase == 0) return 0;
                 var liveTime = (CommonTools.ToUnixTimeSpan(DateTime.Now) - Convert.ToInt64(PhaseStartUtc)) / 60.0;
-                return liveTime < 0 ? 0 : (int)liveTime;
+                return liveTime < 0 ? 0 : (int)Math.Ceiling(liveTime);
             }
         }
 
