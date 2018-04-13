@@ -60,6 +60,13 @@ namespace QIC.Sport.Odds.Collector.Ibc.OddsManager
             return b as T;
         }
 
+        /// <summary>
+        /// 根据oddsid生成缓存盘口
+        /// </summary>
+        /// <param name="oddsIdList"></param>
+        /// <param name="matchId">都为0缓存,避免比赛配对后MatchId不同找不到对应盘口去更新</param>
+        /// <param name="stage"></param>
+        /// <returns></returns>
         public Dictionary<long, MarketEntityBase> ToMarketEntityBases(List<string> oddsIdList, int matchId, int stage)
         {
             Dictionary<long, MarketEntityBase> dic = new Dictionary<long, MarketEntityBase>();

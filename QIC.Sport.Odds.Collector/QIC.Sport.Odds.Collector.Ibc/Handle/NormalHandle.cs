@@ -33,26 +33,28 @@ namespace QIC.Sport.Odds.Collector.Ibc.Handle
                 var pd = data as PushDataDto;
                 var pm = pd.Param as NormalParam;
                 var jArray = FormatToJArray(pd.Data);
-
+                Dictionary<string, KeepOddsMatch> dicUpdateKom = new Dictionary<string, KeepOddsMatch>();
                 MatchEntity currentMatchEntity = null;
-                bool isNext = false;
                 foreach (var item in jArray)
                 {
                     if (item.ToString().Contains("type"))
                     {
+                        KeyValuePair<string, KeepOddsMatch>? kom = null;
                         switch (item["type"].ToString())
                         {
                             //如果type是m，包含的match对象
                             case "m":
-                                //  发送前一次已经统计完的比赛盘口,再进行新的比赛统计
-                                if (currentMatchEntity != null)
                                 {
-                                    MatchCompareRowNumAndMarket(currentMatchEntity, pm);
+                                    //  发送前一次已经统计完的比赛盘口,再进行新的比赛统计
+                                    if (currentMatchEntity != null)
+                                    {
+                                        MatchCompareRowNumAndMarket(currentMatchEntity, pm);
+                                    }
+                                    currentMatchEntity = DealMatchInfo(item, pm);
+                                    break;
                                 }
-                                currentMatchEntity = DealMatchInfo(item, pm);
-                                break;
                             //如果type是o，包含的odds对象
-                            case "o": DealOddsInfo(item, pm); break;
+                            case "o": kom = DealOddsInfo(item, pm); break;
                             //如果type是dm,说明该场比赛结束了，可以删除了
                             case "dm": DealDmInfo(item, pm); break;
                             //如果type是do，说明该盘口关闭了
@@ -60,6 +62,7 @@ namespace QIC.Sport.Odds.Collector.Ibc.Handle
                             //其他类暂不处理
                             default: break;
                         }
+                        if (kom.HasValue && !dicUpdateKom.ContainsKey(kom.Value.Key)) dicUpdateKom.Add(kom.Value.Key, kom.Value.Value);
                     }
                     else
                     {
@@ -70,6 +73,24 @@ namespace QIC.Sport.Odds.Collector.Ibc.Handle
                 //  循环完发送最后一个比赛盘口
                 if (currentMatchEntity != null) MatchCompareRowNumAndMarket(currentMatchEntity, pm);
 
+                //  发送只有盘口更新的数据
+                if (dicUpdateKom.Any())
+                {
+                    var ko = KeepOddsManager.Instance.AddOrGetKeepOdds(pm.Stage);
+                    foreach (var kv in dicUpdateKom)
+                    {
+                        var me = matchEntityManager.Get(kv.Key);
+                        if (me == null)
+                        {
+                            logger.Error("Update market cannot find me SrcMatchId = " + kv.Key);
+                            continue;
+                        }
+
+                        var list = kv.Value.GetOddsIdList();
+                        var dic = ko.ToMarketEntityBases(list, 0, pm.Stage);
+                        me.CompareToMarket(dic, pm.Stage, pm.LimitMarketIdList);
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -129,26 +150,25 @@ namespace QIC.Sport.Odds.Collector.Ibc.Handle
             }
         }
 
-        private void DealOddsInfo(JToken jtoken, NormalParam normalParam)
+        private KeyValuePair<string, KeepOddsMatch>? DealOddsInfo(JToken jtoken, NormalParam normalParam)
         {
             try
             {
+                KeyValuePair<string, KeepOddsMatch>? updateKom = null;
                 var keepOdds = KeepOddsManager.Instance.AddOrGetKeepOdds(normalParam.Stage);
-
                 string oddsId = jtoken["oddsid"].ToString();
                 ParseOddsInfo poi = new ParseOddsInfo();
                 poi.CompareSet(jtoken);
                 SrcMarketTwo two = null;
-                bool isUpdate = false;
                 if (!keepOdds.OddsIdExist(oddsId))
                 {
                     //先判断是否是第一次出现，如果不是，并且oddsdic中还不存在，说明之前就不要的，那就直接抛弃
                     if (jtoken["matchid"] == null)
-                        return;
+                        return null;
                     //如果是第一次出现，就去dropdic中查找，是否包含这个比赛，如果有，说明是被筛选掉的，抛弃。
                     string matchId = jtoken["matchid"].ToString();
                     if (!matchEntityManager.MatchExist(matchId))
-                        return;
+                        return null;
 
                     //  暂时处理Hdp和OU
                     if (poi.MarketId == 1 || poi.MarketId == 2 || poi.MarketId == 3 || poi.MarketId == 4)
@@ -167,7 +187,7 @@ namespace QIC.Sport.Odds.Collector.Ibc.Handle
                 {
                     //  更新的盘口直接更新缓存中
                     two = keepOdds.GetMarket<SrcMarketTwo>(oddsId);
-                    isUpdate = true;
+                    updateKom = new KeyValuePair<string, KeepOddsMatch>(two.SrcMatchId, keepOdds.GetOrAdd(two.SrcMatchId));
                 }
 
                 if (two != null)
@@ -181,19 +201,6 @@ namespace QIC.Sport.Odds.Collector.Ibc.Handle
 
                     two.SetOdds(new[] { "", hdp, poi.HomeOdds, poi.AwayOdds });
 
-                    if (isUpdate)
-                    {
-                        var me = matchEntityManager.Get(two.SrcMatchId);
-                        if (me != null)
-                        {
-                            me.CompareSingleMarket(two.ToMarketEntity(0, normalParam.Stage), normalParam.Stage);
-                        }
-                        else
-                        {
-                            logger.Error("Update market cannot find srcMatchId = " + two.SrcMatchId + " oddsId = " + two.SrcCouID);
-                        }
-                    }
-
                     JsonSerializerSettings jsetting = new JsonSerializerSettings();
                     jsetting.NullValueHandling = NullValueHandling.Ignore;
                     var str = JsonConvert.SerializeObject(two, jsetting);
@@ -205,10 +212,12 @@ namespace QIC.Sport.Odds.Collector.Ibc.Handle
                 //    //有些盘口是不需要的
                 //    logger.Error("Cannot get market  ParseOddsInfo = " + JsonConvert.SerializeObject(poi));
                 //}
+                return updateKom;
             }
             catch (Exception e)
             {
                 logger.Error(e.ToString());
+                return null;
             }
         }
 

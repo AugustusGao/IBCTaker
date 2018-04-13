@@ -130,7 +130,8 @@ namespace QIC.Sport.Odds.Collector.Cache.CacheEntity
             sendList.ForEach(o => SendCoupon(marketDic[o]));
         }
 
-        public void CompareSingleMarket(MarketEntityBase marketEntityBase, int stage)
+        //  不适用
+        private void CompareSingleMarket(MarketEntityBase marketEntityBase, int stage)
         {
             if (stage > 0 && stage != Stage) return;
 

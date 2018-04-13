@@ -46,7 +46,7 @@ namespace QIC.Sport.Odds.Collector.Ibc
             var loginParam = new LoginParam()
             {
                 Username = "S799H9900130",
-                Password = "aaaa1111",
+                Password = "aaaa2222",
                 TakeMode = TakeMode.Pull
             };
             SubscriptionManager.Subscribe(loginParam);
