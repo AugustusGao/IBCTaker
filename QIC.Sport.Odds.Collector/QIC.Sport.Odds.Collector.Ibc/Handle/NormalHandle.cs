@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using log4net;
+using ML.EGP.Sport.Common;
 using ML.EGP.Sport.Common.Enums;
 using ML.Infrastructure.IOC;
 using Newtonsoft.Json;
@@ -157,9 +158,8 @@ namespace QIC.Sport.Odds.Collector.Ibc.Handle
                 KeyValuePair<string, KeepOddsMatch>? updateKom = null;
                 var keepOdds = KeepOddsManager.Instance.AddOrGetKeepOdds(normalParam.Stage);
                 string oddsId = jtoken["oddsid"].ToString();
-                ParseOddsInfo poi = new ParseOddsInfo();
-                poi.CompareSet(jtoken);
-                SrcMarketTwo two = null;
+                ParseOddsInfo poi = null;
+                SrcMarketEntityBase smb = null;
                 if (!keepOdds.OddsIdExist(oddsId))
                 {
                     //先判断是否是第一次出现，如果不是，并且oddsdic中还不存在，说明之前就不要的，那就直接抛弃
@@ -169,41 +169,54 @@ namespace QIC.Sport.Odds.Collector.Ibc.Handle
                     string matchId = jtoken["matchid"].ToString();
                     if (!matchEntityManager.MatchExist(matchId))
                         return null;
-
-                    //  暂时处理Hdp和OU
-                    if (poi.MarketId == 1 || poi.MarketId == 2 || poi.MarketId == 3 || poi.MarketId == 4)
+                    var bettype = jtoken["bettype"].ToString();
+                    poi = OddsFactory.CreatOdds(bettype);
+                    poi.CompareSet(jtoken);
+                    //  只处理需要的盘口类型
+                    if (normalParam.LimitMarketIdList.Contains(poi.MarketId))
                     {
                         var kom = keepOdds.GetOrAdd(matchId);
                         kom.UpdateOddsIdList(poi.MarketId, new List<string>() { oddsId });
 
-                        two = keepOdds.AddOrGetMarket<SrcMarketTwo>(oddsId);
-                        two.SrcMatchId = matchId;
-                        two.SrcCouID = oddsId;
-                        two.MarketID = poi.MarketId;
+                        if (MarketTools.CheckTwoMakret(poi.MarketId))
+                        {
+                            smb = keepOdds.AddOrGetMarket<SrcMarketTwo>(oddsId);
+                        }
+                        else if (poi.MarketId == (int)MarketTypeEnum.H_1X2 || poi.MarketId == (int)MarketTypeEnum.F_1X2)
+                        {
+                            smb = keepOdds.AddOrGetMarket<SrcMarket1X2>(oddsId);
+                        }
 
+                        if (smb != null)
+                        {
+                            smb.SrcMatchId = matchId;
+                            smb.SrcCouID = oddsId;
+                            smb.Bettype = bettype;
+                            smb.MarketID = poi.MarketId;
+                            smb.OddsStatus = poi.OddsStatus;
+                        }
                     }
                 }
                 else
                 {
                     //  更新的盘口直接更新缓存中
-                    two = keepOdds.GetMarket<SrcMarketTwo>(oddsId);
-                    updateKom = new KeyValuePair<string, KeepOddsMatch>(two.SrcMatchId, keepOdds.GetOrAdd(two.SrcMatchId));
+                    smb = keepOdds.GetMarket<SrcMarketEntityBase>(oddsId);
+                    if (smb != null)
+                    {
+                        poi = OddsFactory.CreatOdds(smb.Bettype);
+                        poi.MarketId = smb.MarketID;
+                        poi.CompareSet(jtoken);
+                        updateKom = new KeyValuePair<string, KeepOddsMatch>(smb.SrcMatchId, keepOdds.GetOrAdd(smb.SrcMatchId));
+                    }
                 }
 
-                if (two != null)
+                if (smb != null)
                 {
-                    string hdp = poi.Hdp1;
-                    if (two.MarketID == (int)MarketTypeEnum.F_HDP || two.MarketID == (int)MarketTypeEnum.H_HDP)
-                    {
-                        if (poi.Hdp2 != "0") hdp = poi.Hdp2;
-                        else hdp = "-" + hdp;
-                    }
-
-                    two.SetOdds(new[] { "", hdp, poi.HomeOdds, poi.AwayOdds });
+                    smb.SetOdds(poi.GetDataArr());
 
                     JsonSerializerSettings jsetting = new JsonSerializerSettings();
                     jsetting.NullValueHandling = NullValueHandling.Ignore;
-                    var str = JsonConvert.SerializeObject(two, jsetting);
+                    var str = JsonConvert.SerializeObject(smb, jsetting);
 
                     Console.WriteLine("market = " + str);
                 }
@@ -274,7 +287,7 @@ namespace QIC.Sport.Odds.Collector.Ibc.Handle
                 jsetting.NullValueHandling = NullValueHandling.Ignore;
                 var str = JsonConvert.SerializeObject(pmi, jsetting);
 
-                Console.WriteLine("market = " + str);
+                Console.WriteLine("match = " + str);
                 return me;
             }
             catch (Exception e)

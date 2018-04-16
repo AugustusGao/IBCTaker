@@ -38,7 +38,8 @@ namespace QIC.Sport.Odds.Collector.Ibc.Taker
             {
                 isClosed = true;
                 isConnected = false;
-                //logger.Error("wsSocket_OnClose  ClientID = " + ReaditClientID + ", args = " + JsonConvert.SerializeObject(e));
+                OnClosed(new WebSocket.EventArgs.CloseEventArgs() { Code = e.Code, Reason = e.Reason });
+                logger.Error("Socket_OnClose, CloseEventArgs = " + JsonConvert.SerializeObject(e));
                 //OnClosed(new QIC.Sport.Signal.Collector.Bet365.WebSocket.EventParam.CloseEventArgs() { ClientID = ReaditClientID, Code = e.Code, Reason = e.Reason });
             }
             catch (Exception ex)
@@ -51,9 +52,9 @@ namespace QIC.Sport.Odds.Collector.Ibc.Taker
         {
             try
             {
-                isClosed = true;
-                isConnected = false;
-                //logger.Error("wsSocket_OnClose  ClientID = " + ReaditClientID + ", args = " + JsonConvert.SerializeObject(e));
+                //isClosed = true;
+                //isConnected = false;
+                logger.Error("Socket_OnError, ErrorEventArgs = " + JsonConvert.SerializeObject(e));
                 //OnClosed(new QIC.Sport.Signal.Collector.Bet365.WebSocket.EventParam.CloseEventArgs() { ClientID = ReaditClientID, Code = e.Code, Reason = e.Reason });
             }
             catch (Exception ex)

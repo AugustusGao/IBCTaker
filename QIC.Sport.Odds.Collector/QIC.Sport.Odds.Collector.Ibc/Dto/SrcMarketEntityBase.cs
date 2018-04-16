@@ -12,7 +12,8 @@ namespace QIC.Sport.Odds.Collector.Ibc.Dto
     {
         public string SrcMatchId { get; set; }
         public string SrcCouID { get; set; }
-
+        public string Bettype { get; set; }
+        public string OddsStatus { get; set; }
         public int MarketID { get; set; }
 
         internal virtual void SetOdds(string[] oddsArr) { }
@@ -34,10 +35,12 @@ namespace QIC.Sport.Odds.Collector.Ibc.Dto
             Hdp = string.IsNullOrEmpty(oddsArr[1]) ? Hdp : decimal.TryParse(oddsArr[1], out o) ? o : (decimal?)null;
             HomeOdds = string.IsNullOrEmpty(oddsArr[2]) ? HomeOdds : decimal.TryParse(oddsArr[2], out o) ? o : (decimal?)null;
             AwayOdds = string.IsNullOrEmpty(oddsArr[3]) ? AwayOdds : decimal.TryParse(oddsArr[3], out o) ? o : (decimal?)null;
+            OddsStatus = string.IsNullOrEmpty(oddsArr[4]) ? OddsStatus = OddsStatus : OddsStatus = oddsArr[4];
         }
 
         internal override MarketEntityBase ToMarketEntity(int matchID, int stage)
         {
+            //if (OddsStatus == "closePrice") return null;
             if (!Hdp.HasValue || !HomeOdds.HasValue || !AwayOdds.HasValue) return null;
             if (Hdp.Value == 0 && HomeOdds.Value == 0 && AwayOdds.Value == 0) return null;
 
@@ -64,10 +67,12 @@ namespace QIC.Sport.Odds.Collector.Ibc.Dto
             HomeOdds = string.IsNullOrEmpty(oddsArr[1]) ? HomeOdds : decimal.TryParse(oddsArr[1], out o) ? o : (decimal?)null;
             Draw = string.IsNullOrEmpty(oddsArr[2]) ? Draw : decimal.TryParse(oddsArr[2], out o) ? o : (decimal?)null;
             AwayOdds = string.IsNullOrEmpty(oddsArr[3]) ? AwayOdds : decimal.TryParse(oddsArr[3], out o) ? o : (decimal?)null;
+            OddsStatus = string.IsNullOrEmpty(oddsArr[4]) ? OddsStatus = OddsStatus : OddsStatus = oddsArr[4];
         }
 
         internal override MarketEntityBase ToMarketEntity(int matchID, int stage)
         {
+            if (OddsStatus == "closePrice") return null;
             if (!Draw.HasValue || !HomeOdds.HasValue || !AwayOdds.HasValue) return null;
             if (Draw.Value == 0 && HomeOdds.Value == 0 && AwayOdds.Value == 0) return null;
 

@@ -116,7 +116,7 @@ namespace QIC.Sport.Odds.Collector.Ibc
                     sorting = "n"
                 }
             };
-            list.Add(new NormalParam() { Stage = (int)MatchStageEnum.Early, TakeMode = TakeMode.Push, SocketParam = sp });
+            //list.Add(new NormalParam() { Stage = (int)MatchStageEnum.Early, TakeMode = TakeMode.Push, SocketParam = sp });
             return list;
         }
         private void TakerWork()

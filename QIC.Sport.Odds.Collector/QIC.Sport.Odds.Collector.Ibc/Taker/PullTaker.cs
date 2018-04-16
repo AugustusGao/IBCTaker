@@ -414,7 +414,7 @@ namespace QIC.Sport.Odds.Collector.Ibc.Taker
                     {
                         logger.Error(e.ToString());
                     }
-                    logger.Error("LoginCheck!!!");
+                    //logger.Error("LoginCheck!!!");
                 }
             }
             catch (Exception e)

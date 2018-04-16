@@ -62,8 +62,8 @@
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
-    <Reference Include="websocket-sharp-with-proxy-support">
-      <HintPath>..\..\..\..\lib\websocket-sharp-with-proxy-support.dll</HintPath>
+    <Reference Include="websocket-sharp">
+      <HintPath>..\..\..\..\lib\websocket-sharp.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>

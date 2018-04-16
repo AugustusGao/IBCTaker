@@ -39,6 +39,10 @@ namespace QIC.Sport.Odds.Collector.Cache.CacheManager
             bool isNewMatch = CheckMatch(srcMatchID, srcLeague, srcHome, srcAway, srcMatchDate, dto, out isMatchDateChanged);
             if (isNewMatch) SendSrcMatchInfo(dto);
             else if (isMatchDateChanged) SendSrcMatchDate(dto);
+
+            //  测试
+            //if (srcMatchID == "24811885") dto.MatchID = 1234;
+
             return dto;
         }
         public void MatchLink(string srcMatchID, int matchID)

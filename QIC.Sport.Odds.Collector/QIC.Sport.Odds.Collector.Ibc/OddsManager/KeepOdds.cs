@@ -76,6 +76,8 @@ namespace QIC.Sport.Odds.Collector.Ibc.OddsManager
                 if (dicMarket.TryGetValue(id, out b))
                 {
                     var meb = b.ToMarketEntity(matchId, stage);
+                    if (meb == null) continue;
+
                     dic.Add(meb.CouID, meb);
                 }
             }
