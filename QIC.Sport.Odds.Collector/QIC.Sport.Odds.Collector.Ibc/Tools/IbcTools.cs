@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using ML.EGP.Sport.Common;
 using ML.EGP.Sport.Common.Enums;
 
 namespace QIC.Sport.Odds.Collector.Ibc.Tools
@@ -14,13 +15,14 @@ namespace QIC.Sport.Odds.Collector.Ibc.Tools
             switch (bettype)
             {
                 case "1":
+                case "609":
                     return (int)MarketTypeEnum.F_HDP;
                 case "2":
+                case "611":
                     return (int)MarketTypeEnum.F_OE;
                 case "3":
+                case "610":
                     return (int)MarketTypeEnum.F_OU;
-                case "4":
-                    return (int)MarketTypeEnum.H_OE;
                 case "5":
                     return (int)MarketTypeEnum.F_1X2;
                 case "7":
@@ -50,6 +52,18 @@ namespace QIC.Sport.Odds.Collector.Ibc.Tools
             {
                 case "1": return 1;
                 case "2": return 2;
+                case "3": return 3;
+                case "7": return 17;
+                case "8": return 4;
+                case "4": return 5;
+                case "5": return 7;
+                case "9": return 8;
+                case "10": return 10;
+                case "50": return 11;
+                case "6": return 12;
+                case "26": return 18;
+                case "25": return 20;
+                case "43": return 26;
                 default: return 0;
             }
         }

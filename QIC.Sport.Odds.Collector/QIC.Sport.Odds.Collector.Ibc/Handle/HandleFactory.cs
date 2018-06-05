@@ -14,6 +14,7 @@ namespace QIC.Sport.Odds.Collector.Ibc.Handle
             switch (dataType)
             {
                 case (int)DataType.Normal: return new NormalHandle();
+                case (int)DataType.Exception: return new ExceptionHandle();
                 default: return null;
             }
         }

@@ -11,6 +11,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using QIC.Sport.Odds.Collector.Cache.CacheEntity;
 using QIC.Sport.Odds.Collector.Cache.CacheManager;
+using QIC.Sport.Odds.Collector.Common;
 using QIC.Sport.Odds.Collector.Core.Handle;
 using QIC.Sport.Odds.Collector.Core.MatchWorkerManager;
 using QIC.Sport.Odds.Collector.Core.SubscriptionManager;
@@ -40,6 +41,16 @@ namespace QIC.Sport.Odds.Collector.Ibc.Handle
                 {
                     if (item.ToString().Contains("type"))
                     {
+                        //  同步时间时间处理
+                        if (pm.SubscribeType == "time")
+                        {
+                            var str = item.Next["t"].ToString();
+                            var ibcNow = Convert.ToInt64(str.Substring(0, str.Length - 3));
+                            var localNow = CommonTools.ToUnixTimeSpan(DateTime.Now);
+                            LiveInfoManager.Instance.IbcDiffSyncTime = Convert.ToInt32(localNow - ibcNow);
+                            return;
+                        }
+
                         KeyValuePair<string, KeepOddsMatch>? kom = null;
                         switch (item["type"].ToString())
                         {
@@ -55,7 +66,7 @@ namespace QIC.Sport.Odds.Collector.Ibc.Handle
                                     break;
                                 }
                             //如果type是o，包含的odds对象
-                            case "o": kom = DealOddsInfo(item, pm); break;
+                            case "o": kom = DealOddsInfo(item, pm, currentMatchEntity != null); break;
                             //如果type是dm,说明该场比赛结束了，可以删除了
                             case "dm": DealDmInfo(item, pm); break;
                             //如果type是do，说明该盘口关闭了
@@ -77,7 +88,6 @@ namespace QIC.Sport.Odds.Collector.Ibc.Handle
                 //  发送只有盘口更新的数据
                 if (dicUpdateKom.Any())
                 {
-                    var ko = KeepOddsManager.Instance.AddOrGetKeepOdds(pm.Stage);
                     foreach (var kv in dicUpdateKom)
                     {
                         var me = matchEntityManager.Get(kv.Key);
@@ -87,9 +97,7 @@ namespace QIC.Sport.Odds.Collector.Ibc.Handle
                             continue;
                         }
 
-                        var list = kv.Value.GetOddsIdList();
-                        var dic = ko.ToMarketEntityBases(list, 0, pm.Stage);
-                        me.CompareToMarket(dic, pm.Stage, pm.LimitMarketIdList);
+                        MatchCompareRowNumAndMarket(me, pm);
                     }
                 }
             }
@@ -113,6 +121,7 @@ namespace QIC.Sport.Odds.Collector.Ibc.Handle
                 var kom = keepOdds.GetOrAdd(old.SrcMatchId);
                 if (kom == null) return;
                 kom.DeleteOddsIdList(old.MarketID, new List<string>() { oddsId });
+                keepOdds.RemoveMarketByOddsId(oddsId);
 
                 //  有盘口移除需要对比RowNum是否变化和对应盘口关盘
                 var me = matchEntityManager.Get(old.SrcMatchId);
@@ -139,11 +148,28 @@ namespace QIC.Sport.Odds.Collector.Ibc.Handle
                 var keepOdds = KeepOddsManager.Instance.AddOrGetKeepOdds(normalParam.Stage);
                 string matchId = jtoken["matchid"].ToString();
                 var me = matchEntityManager.Get(matchId);
-                me.MatchDisappear(normalParam.Stage, normalParam.LimitMarketIdList, true);
-                keepOdds.RemoveBySrcMatchId(matchId);
-                LiveInfoManager.Instance.RemoveBySrcMatchId(matchId);
+                Dictionary<string, MatchEntity> delDic = new Dictionary<string, MatchEntity>();
+                delDic.Add(matchId, me);
+                if (me.SportID == 2)
+                {
+                    //  移除相关的篮球小节比赛
+                    foreach (var q in new[] { "01", "02", "03", "04" })
+                    {
+                        var m = matchEntityManager.Get(matchId + q);
+                        if (m == null) continue;
 
-                Console.WriteLine("Remove SrcMatchID = " + matchId);
+                        delDic.Add(matchId + q, m);
+                    }
+                }
+
+                foreach (var kv in delDic)
+                {
+                    kv.Value.MatchDisappear(normalParam.Stage, normalParam.LimitMarketIdList, true);
+                    keepOdds.RemoveBySrcMatchId(kv.Key);
+                    LiveInfoManager.Instance.RemoveBySrcMatchId(kv.Key, normalParam.Stage);
+
+                    Console.WriteLine("Remove SrcMatchID = " + kv.Key);
+                }
             }
             catch (Exception e)
             {
@@ -151,7 +177,7 @@ namespace QIC.Sport.Odds.Collector.Ibc.Handle
             }
         }
 
-        private KeyValuePair<string, KeepOddsMatch>? DealOddsInfo(JToken jtoken, NormalParam normalParam)
+        private KeyValuePair<string, KeepOddsMatch>? DealOddsInfo(JToken jtoken, NormalParam normalParam, bool isExistMatch)
         {
             try
             {
@@ -160,22 +186,51 @@ namespace QIC.Sport.Odds.Collector.Ibc.Handle
                 string oddsId = jtoken["oddsid"].ToString();
                 ParseOddsInfo poi = null;
                 SrcMarketEntityBase smb = null;
+                bool isUpdate = false;
                 if (!keepOdds.OddsIdExist(oddsId))
                 {
-                    //先判断是否是第一次出现，如果不是，并且oddsdic中还不存在，说明之前就不要的，那就直接抛弃
                     if (jtoken["matchid"] == null)
                         return null;
-                    //如果是第一次出现，就去dropdic中查找，是否包含这个比赛，如果有，说明是被筛选掉的，抛弃。
+
                     string matchId = jtoken["matchid"].ToString();
                     if (!matchEntityManager.MatchExist(matchId))
                         return null;
                     var bettype = jtoken["bettype"].ToString();
                     poi = OddsFactory.CreatOdds(bettype);
-                    poi.CompareSet(jtoken);
+                    poi.CompareSet(jtoken, false);
                     //  只处理需要的盘口类型
                     if (normalParam.LimitMarketIdList.Contains(poi.MarketId))
                     {
-                        var kom = keepOdds.GetOrAdd(matchId);
+                        KeepOddsMatch kom = null;
+                        if (!string.IsNullOrEmpty(poi.Resourceid))
+                        {
+                            var mainMatch = matchEntityManager.Get(matchId);
+                            matchId = matchId + poi.Resourceid;
+                            if (mainMatch.SportID == 2)
+                            {
+                                var quarterMatch = matchEntityManager.Get(matchId);
+                                if (quarterMatch == null)
+                                {//  自生成篮球小节的比赛
+                                    var quarter = poi.Resourceid == "01" ? " - First Quarter" :
+                                        poi.Resourceid == "02" ? " - Second Quarter" :
+                                        poi.Resourceid == "03" ? " - Third Quarter" :
+                                        poi.Resourceid == "03" ? " - Fourth Quarter" : " - UnKnown Quarter";
+                                    quarterMatch = matchEntityManager.GetOrAdd(matchId, mainMatch.SrcLeague + quarter, mainMatch.SrcHome, mainMatch.SrcAway, mainMatch.SrcMatchDate, mainMatch.SportID, true);
+                                }
+                                quarterMatch.CompareToStage(normalParam.Stage);
+                                kom = keepOdds.GetOrAdd(matchId);
+                                isUpdate = true;    //  以更新盘口处理方式发送小节比赛里的盘口数据
+                            }
+                        }
+                        else
+                        {
+                            kom = keepOdds.GetOrAdd(matchId);
+                            //  如果本次数据块中，新加的当前盘口之前并没有比赛信息，说明这个盘口数据是因为传输数据被分块，导致与比赛信息隔开了再发送的，此时这个盘口应当以更新方式发送
+                            if (!isExistMatch) isUpdate = true;
+                        }
+
+                        if (kom == null) return null;
+
                         kom.UpdateOddsIdList(poi.MarketId, new List<string>() { oddsId });
 
                         if (MarketTools.CheckTwoMakret(poi.MarketId))
@@ -206,13 +261,14 @@ namespace QIC.Sport.Odds.Collector.Ibc.Handle
                         poi = OddsFactory.CreatOdds(smb.Bettype);
                         poi.MarketId = smb.MarketID;
                         poi.CompareSet(jtoken);
-                        updateKom = new KeyValuePair<string, KeepOddsMatch>(smb.SrcMatchId, keepOdds.GetOrAdd(smb.SrcMatchId));
+                        isUpdate = true;
                     }
                 }
 
                 if (smb != null)
                 {
                     smb.SetOdds(poi.GetDataArr());
+                    if (isUpdate) updateKom = new KeyValuePair<string, KeepOddsMatch>(smb.SrcMatchId, keepOdds.GetOrAdd(smb.SrcMatchId));
 
                     JsonSerializerSettings jsetting = new JsonSerializerSettings();
                     jsetting.NullValueHandling = NullValueHandling.Ignore;
@@ -241,16 +297,22 @@ namespace QIC.Sport.Odds.Collector.Ibc.Handle
                 //解析比赛信息
                 var pmi = new ParseMatchInfo();
                 pmi.CompareSet(jtoken);
+                int sportId = 0;
                 MatchEntity me;
                 if (pmi.SportType != null)
                 {
-                    var sportId = IbcTools.ConvertToSportId(pmi.SportType);
+                    sportId = IbcTools.ConvertToSportId(pmi.SportType);
+                    if (sportId == 0) return null;
+
                     var matchDate = GetTime(pmi.KickOffTime);
                     matchDate = matchDate.AddSeconds(-matchDate.Second);
                     var diffMinutes = matchDate.Minute % 5;
                     matchDate = matchDate.AddMinutes(5 - diffMinutes);
+                    var home = string.IsNullOrEmpty(pmi.HomeTeamNameExtension) ? pmi.HomeTeamName : pmi.HomeTeamName + "[" + pmi.HomeTeamNameExtension + "]";
+                    var away = string.IsNullOrEmpty(pmi.AwayTeamNameExtension) ? pmi.AwayTeamName : pmi.AwayTeamName + "[" + pmi.AwayTeamNameExtension + "]";
+                    if (sportId == 1 && pmi.Isneutral == "1") home = home + " (N)";
 
-                    me = matchEntityManager.GetOrAdd(pmi.MatchId, pmi.LeagueName, pmi.HomeTeamName, pmi.AwayTeamName, matchDate, sportId);
+                    me = matchEntityManager.GetOrAdd(pmi.MatchId, pmi.LeagueName, home, away, matchDate, sportId);
 
                     me.CompareToStage(normalParam.Stage);
                 }
@@ -266,21 +328,40 @@ namespace QIC.Sport.Odds.Collector.Ibc.Handle
                 }
 
                 //  if stage = 3
-                if (normalParam.Stage == 3)
+                if (normalParam.Stage == 3 && !me.IsSelfCreate && (me.SportID == 1 || me.SportID == 2))
                 {
                     var lti = new LiveInfo();
+                    lti.SportId = me.SportID;
                     lti.SrcMatchId = pmi.MatchId;
-                    lti.HomeScore = string.IsNullOrEmpty(pmi.LiveHomeScore) ? lti.HomeScore : Convert.ToInt32(pmi.LiveHomeScore);
-                    lti.AwayScore = string.IsNullOrEmpty(pmi.LiveAwayScore) ? lti.AwayScore : Convert.ToInt32(pmi.LiveAwayScore);
-                    lti.HomeRed = string.IsNullOrEmpty(pmi.HomeRed) ? lti.HomeRed : Convert.ToInt32(pmi.HomeRed);
-                    lti.AwayRed = string.IsNullOrEmpty(pmi.AwayRed) ? lti.AwayRed : Convert.ToInt32(pmi.AwayRed);
-                    lti.Phase = pmi.Csstatus == "1" ? 0 : string.IsNullOrEmpty(pmi.Liveperiod) ? (int?)null : pmi.Liveperiod == "1" ? 1 : pmi.Liveperiod == "2" ? 2 : -1;
+                    lti.HomeScore = string.IsNullOrEmpty(pmi.LiveHomeScore) ? (int?)null : Convert.ToInt32(pmi.LiveHomeScore);
+                    lti.AwayScore = string.IsNullOrEmpty(pmi.LiveAwayScore) ? (int?)null : Convert.ToInt32(pmi.LiveAwayScore);
+                    lti.HomeRed = string.IsNullOrEmpty(pmi.HomeRed) ? (int?)null : Convert.ToInt32(pmi.HomeRed);
+                    lti.AwayRed = string.IsNullOrEmpty(pmi.AwayRed) ? (int?)null : Convert.ToInt32(pmi.AwayRed);
+                    lti.Csstatus = pmi.Csstatus;
+                    lti.Liveperiod = pmi.Liveperiod;
                     lti.PhaseStartUtc = pmi.Livetimer;
+                    lti.PhaseStartUtcUpdateTime = string.IsNullOrEmpty(pmi.Livetimer) ? (DateTime?)null : DateTime.Now;
 
                     var ret = LiveInfoManager.Instance.AddOrUpdate(lti);
-                    me.CompareToScore(ret.HomeScore.Value, ret.AwayScore.Value);
-                    me.CompareToCard(ret.HomeRed.Value, ret.AwayRed.Value);
-                    me.CompareToTime(ret.Phase.Value, ret.LiveTime);
+
+                    if (me.SportID == 1)
+                    {
+                        me.CompareToScore(ret.HomeScore.Value, ret.AwayScore.Value);
+                        me.CompareToCard(ret.HomeRed.Value, ret.AwayRed.Value);
+                    }
+                    else if (me.SportID == 2)
+                    {
+                        if (!string.IsNullOrEmpty(pmi.LiveScore))
+                        {
+                            var bkScore = JsonConvert.DeserializeObject<BasketballScore>(pmi.LiveScore);
+                            var homeScore = Convert.ToInt32(bkScore.h1q) + Convert.ToInt32(bkScore.h2q) +
+                                            Convert.ToInt32(bkScore.h3q) + Convert.ToInt32(bkScore.h4q);
+                            var awayScore = Convert.ToInt32(bkScore.a1q) + Convert.ToInt32(bkScore.a2q) +
+                                            Convert.ToInt32(bkScore.a3q) + Convert.ToInt32(bkScore.a4q);
+                            me.CompareToScore(homeScore, awayScore);
+                        }
+                    }
+                    me.CompareToTime(ret.Phase.Value, ret.LiveTime(LiveInfoManager.Instance.IbcDiffSyncTime));
                 }
 
                 JsonSerializerSettings jsetting = new JsonSerializerSettings();
@@ -303,14 +384,30 @@ namespace QIC.Sport.Odds.Collector.Ibc.Handle
             var kom = keepOdds.GetOrAdd(currentMatchEntity.SrcMatchID);
             if (kom != null)
             {
-                int htRowNum;
-                int rowNum;
-                kom.GetRowNum(out rowNum, out htRowNum);
-                //  先发RowNum再发盘口
-                currentMatchEntity.CompareToRowNum(rowNum, htRowNum, param.Stage);
-                var oddsIdList = kom.GetOddsIdList();
-                var dic = keepOdds.ToMarketEntityBases(oddsIdList, 0, param.Stage);
-                currentMatchEntity.CompareToMarket(dic, param.Stage, param.LimitMarketIdList);
+                try
+                {
+                    int htRowNum;
+                    int rowNum;
+                    kom.GetRowNum(out rowNum, out htRowNum);
+                    //  先发RowNum再发盘口
+                    currentMatchEntity.CompareToRowNum(rowNum, htRowNum, param.Stage);
+                    var oddsIdList = kom.GetOddsIdList();
+
+                    var nl = oddsIdList.Distinct().ToList();
+                    if (!oddsIdList.SequenceEqual(nl))
+                    {
+                        //  有重复的
+                        logger.Error("Update market oddsId error = " + JsonConvert.SerializeObject(kom));
+                    }
+
+                    var dic = keepOdds.ToMarketEntityBases(nl, 0, param.Stage);
+                    currentMatchEntity.CompareToMarket(dic, param.Stage, param.LimitMarketIdList);
+                }
+                catch (Exception ex)
+                {
+                    logger.Error(ex.ToString());
+                    logger.Error("CompareToMarket Failed kom = " + JsonConvert.SerializeObject(kom));
+                }
             }
             else
             {

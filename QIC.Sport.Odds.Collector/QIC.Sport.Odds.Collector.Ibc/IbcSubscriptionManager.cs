@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Mail;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,6 +13,7 @@ using QIC.Sport.Odds.Collector.Core.SubscriptionManager;
 using QIC.Sport.Odds.Collector.Ibc.Dto;
 using QIC.Sport.Odds.Collector.Ibc.Param;
 using QIC.Sport.Odds.Collector.Ibc.Taker;
+using QIC.Sport.Odds.Collector.Ibc.Tools;
 
 namespace QIC.Sport.Odds.Collector.Ibc
 {
@@ -23,10 +25,13 @@ namespace QIC.Sport.Odds.Collector.Ibc
         private PullTaker pullTaker;
         private PushTaker pushTaker;
 
+        private DateTime lastReceiveTime = DateTime.Now;    //  记录最新收到数据时间，超过5分钟没收到发送邮件通知
+        private int sendEmailIntervals = 5 * 60;            //  5分钟
+        private bool isSended = false;
+
         public void Init()
         {
             pullTaker = new PullTaker();
-            Task.Run(() => InitPushTaker());
             Task.Run(() => TakerWork());
         }
         public void Subscribe(ISubscribeParam param)
@@ -39,129 +44,90 @@ namespace QIC.Sport.Odds.Collector.Ibc
             ISubscribeParam sp;
             if (DicSubscribeParams.TryRemove(param.Key, out sp))
             {
-                var np = sp as NormalParam;
-                pushTaker.UnSubscribe(np.Topic);
+                var unTopic = "42[\"unsubscribe\",\"" + sp.Key + "\"]";
+                pushTaker.UnSubscribe(unTopic);
 
-                logger.Info("pushTaker UnSubscribe  topic = " + np.Topic + " Param = " + JsonConvert.SerializeObject(sp));
+                logger.Info("pushTaker UnSubscribe  topic = " + sp.Key + " Param = " + JsonConvert.SerializeObject(sp));
             }
         }
 
         public event DataReceivedEventHandler DataReceived;
 
-        private void InitPushTaker()
-        {
-            //  检查PullTaker初始化成功有参数后将生成MatchMenu的订阅参数加入订阅
-            while (pullTaker.Status != TakerStatus.Started || pullTaker.SocketInitDto == null)
-            {
-                Thread.Sleep(1000);
-            }
-
-            SocketParam sp = new SocketParam()
-            {
-                id = "c13",
-                rev = 0,
-                condition = new Condition()
-                {
-                    marketid = "L",
-                    sporttype = new[] { 1 },
-                    bettype = new[] { 1, 3, 5, 7, 8, 15 },
-                    sorting = "n"
-                }
-            };
-
-            //Subscribe(new NormalParam() { Stage = (int)MatchStageEnum.Live, TakeMode = TakeMode.Push, SocketParam = sp });
-            GetAllParam().ForEach(Subscribe);
-        }
-
-        private List<NormalParam> GetAllParam()
-        {
-            List<NormalParam> list = new List<NormalParam>();
-            SocketParam sp = new SocketParam()
-            {
-                id = "c13",
-                rev = 0,
-                condition = new Condition()
-                {
-                    marketid = "L",
-                    sporttype = new[] { 1 },
-                    bettype = new[] { 1, 3, 5, 7, 8, 15 },
-                    sorting = "n"
-                }
-            };
-            list.Add(new NormalParam() { Stage = (int)MatchStageEnum.Live, TakeMode = TakeMode.Push, SocketParam = sp });
-
-            sp = new SocketParam()
-            {
-                id = "c12",
-                rev = 0,
-                condition = new Condition()
-                {
-                    marketid = "T",
-                    sporttype = new[] { 1 },
-                    bettype = new[] { 1, 3, 5, 7, 8, 15 },
-                    sorting = "n"
-                }
-            };
-            list.Add(new NormalParam() { Stage = (int)MatchStageEnum.Today, TakeMode = TakeMode.Push, SocketParam = sp });
-
-            sp = new SocketParam()
-            {
-                id = "c11",
-                rev = 0,
-                condition = new Condition()
-                {
-                    marketid = "E",
-                    sporttype = new[] { 1 },
-                    bettype = new[] { 1, 3, 5, 7, 8, 15 },
-                    sorting = "n"
-                }
-            };
-            //list.Add(new NormalParam() { Stage = (int)MatchStageEnum.Early, TakeMode = TakeMode.Push, SocketParam = sp });
-            return list;
-        }
         private void TakerWork()
         {
             while (true)
             {
+                if ((DateTime.Now - lastReceiveTime).TotalSeconds > sendEmailIntervals && !isSended)
+                {
+                    EmailTools.SendQQEmail(new MailMessage() { Subject = "IBC Taker", Body = "More than 5 minutes cannot take data!!!" });
+                    isSended = true;
+                }
                 foreach (var kv in DicSubscribeParams)
                 {
-                    var param = kv.Value as BaseParam;
-                    if (param == null) continue;
-                    if (param.TakeMode == TakeMode.Pull)
+                    try
                     {
-                        if (param.IsSubscribed) continue;
-
-                        pullTaker.Available = false;
-                        pullTaker.Init(kv.Value);
-                        pullTaker.LoginTask();
-                        param.IsSubscribed = true;
-                    }
-                    else
-                    {
-                        if (pushTaker == null)
+                        var param = kv.Value as BaseParam;
+                        if (param == null) continue;
+                        if (param.TakeMode == TakeMode.Pull)
                         {
-                            ConnectPushTaker();
-                            continue;
-                        }
-                        if (param.IsSubscribed || !pushTaker.IsConnected) continue;
+                            if (param.IsSubscribed) continue;
 
-                        var normalParam = param as NormalParam;
-                        pushTaker.Subscribe(normalParam.Topic);
-                        param.IsSubscribed = true;
-                        logger.Info("Subscribe = " + normalParam.Topic);
+                            pullTaker.Available = false;
+                            pullTaker.Init(kv.Value);
+                            pullTaker.LoginTask();
+                            param.IsSubscribed = true;
+                        }
+                        else
+                        {
+                            if (pushTaker == null)
+                            {
+                                ConnectPushTaker();
+                                continue;
+                            }
+                            if (param.IsSubscribed || !pushTaker.IsConnected) continue;
+
+                            var normalParam = param as NormalParam;
+                            pushTaker.Subscribe(normalParam.Topic);
+                            param.IsSubscribed = true;
+                            logger.Info("Subscribe = " + normalParam.Topic);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.Error(ex.ToString());
+                        logger.Error(JsonConvert.SerializeObject(kv));
                     }
                 }
                 Thread.Sleep(100);
             }
         }
 
-        private bool ConnectPushTaker()
+        private bool ConnectPushTaker(bool isNeedLogin = false)
         {
+            return false;
             if (pushTaker != null && pushTaker.IsConnected) return true;
-            pushTaker = new PushTaker();
-            pushTaker.Init(pullTaker.SocketInitDto);
-            pushTaker.MessageReceived += PushTaker_MessageReceived;
-            pushTaker.Closed += PushTaker_Closed;
+
+            if (pushTaker == null)
+            {
+                if (pullTaker.Status != TakerStatus.Started) return false;
+
+                pushTaker = new PushTaker();
+                pushTaker.Init(pullTaker.SocketInitDto);
+                pushTaker.MessageReceived += PushTaker_MessageReceived;
+                pushTaker.Closed += PushTaker_Closed;
+
+                //  设置PullTaker强制关闭socket的委托方法，以便在LoginCheck出现错误的时候要关闭socket再重新连接
+                pullTaker.ForceCloseSocket = () => { pushTaker.Close(); };
+            }
+            else
+            {
+                //  pushTaker存在，需要重新请求登录尝试重新连接Socket 
+                pullTaker.Status = TakerStatus.Stoped;
+
+                while (!pullTaker.AutoLogin()) { Thread.Sleep(5000); }
+
+                pushTaker.Init(pullTaker.SocketInitDto);
+            }
             logger.Info(" Start Connect Ibc ...");
             Console.WriteLine(" Start Connect Ibc ...");
             if (!pushTaker.Connect())
@@ -177,25 +143,35 @@ namespace QIC.Sport.Odds.Collector.Ibc
 
         private void PushTaker_Closed(object sender, Taker.WebSocket.EventArgs.CloseEventArgs e)
         {
-            try
+            Task.Run((() =>
             {
-                logger.Error("PushTaker_Closed CloseEventArgs = " + JsonConvert.SerializeObject(e));
-                foreach (var param in DicSubscribeParams.Values.Cast<BaseParam>())
+                try
                 {
-                    if (param.TakeMode == TakeMode.Push) param.IsSubscribed = false;
+                    logger.Error("PushTaker_Closed CloseEventArgs = " + JsonConvert.SerializeObject(e));
+                    foreach (var param in DicSubscribeParams.Values.Cast<BaseParam>())
+                    {
+                        if (param.TakeMode == TakeMode.Push) param.IsSubscribed = false;
+                    }
+
+                    dicRMark.Clear();
+                    DataReceived(null, new DataReceiveEventArgs() { Data = new PushDataDto() { DataType = (int)DataType.Exception } });
+
+                    // 重新登录获取参数再连接
+                    logger.Info("Ibc reconnect...");
+                    ConnectPushTaker();
                 }
-                // 重新登录获取参数再连接
-                logger.Info("Ibc reconnect...");
-                ConnectPushTaker();
-            }
-            catch (Exception ex)
-            {
-                logger.Error("CloseEventArgs = " + JsonConvert.SerializeObject(e) + "\n" + e.ToString());
-            }
+                catch (Exception ex)
+                {
+                    logger.Error("CloseEventArgs = " + JsonConvert.SerializeObject(e) + "\n" + e.ToString());
+                }
+            }));
         }
 
         private void PushTaker_MessageReceived(object sender, Taker.WebSocket.EventArgs.MessageReceiveEventArgs e)
         {
+            lastReceiveTime = DateTime.Now;
+            isSended = false;
+
             if (e == null) return;
             string thisTopic = string.Empty;
             if (string.IsNullOrEmpty(e.HeadInfo) || !e.HeadInfo.Contains("42")) return;
@@ -215,15 +191,10 @@ namespace QIC.Sport.Odds.Collector.Ibc
             else if (e.HeadInfo.Contains("r"))
             {
                 cid = e.CId;
-                var kv = dicRMark.FirstOrDefault(o => o.Value.Contains(cid));
-                if (string.IsNullOrEmpty(kv.Value))
-                {
-                    dicRMark.Add(e.RMark, cid);
-                }
+                if (dicRMark.ContainsKey(e.RMark))
+                    dicRMark[e.RMark] = cid;
                 else
-                {
-                    dicRMark[kv.Key] = cid;
-                }
+                    dicRMark.Add(e.RMark, cid);
             }
             else
             {

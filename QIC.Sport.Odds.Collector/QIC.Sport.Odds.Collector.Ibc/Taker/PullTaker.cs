@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Timers;
 using HtmlAgilityPack;
 using log4net;
 using ML.NetComponent.Http;
@@ -16,6 +17,7 @@ using QIC.Sport.Odds.Collector.Core.SubscriptionManager;
 using QIC.Sport.Odds.Collector.Ibc.Dto;
 using QIC.Sport.Odds.Collector.Ibc.Param;
 using MD5 = System.Security.Cryptography.MD5;
+using Timer = System.Timers.Timer;
 
 namespace QIC.Sport.Odds.Collector.Ibc.Taker
 {
@@ -28,13 +30,21 @@ namespace QIC.Sport.Odds.Collector.Ibc.Taker
         private const string acceptEncoding = "gzip, deflate, sdch";
         private LoginParam loginParam;
         private string localUrl;
+        private Timer loginCheckTimer;
+        private string checkCookie;
+        private string checkUrl;
 
         public bool Available { get; set; }
         public TakerStatus Status { get; set; }
         public SocketInitDto SocketInitDto { get; set; }
+        public Action ForceCloseSocket = null;
         public PullTaker()
         {
             Status = TakerStatus.Stoped;
+            loginCheckTimer = new Timer();
+            loginCheckTimer.Interval = 60 * 1000;
+            loginCheckTimer.AutoReset = true;
+            loginCheckTimer.Elapsed += LoginCheckin;
         }
         public void Init(ISubscribeParam param)
         {
@@ -62,7 +72,10 @@ namespace QIC.Sport.Odds.Collector.Ibc.Taker
                 //访问首页
                 HttpItem item;
                 HttpResult result;
-                string mainCookie = "LangKey=en";
+                string mainCookie = "";// "LangKey=en";
+
+                ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
+                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
 
                 item = new HttpItem()
                 {
@@ -71,15 +84,16 @@ namespace QIC.Sport.Odds.Collector.Ibc.Taker
                     Accept = accept,
                     Cookie = mainCookie,
                     Allowautoredirect = true,
-                    //Allowautoredirect = true
+                    KeepAlive = true
                 };
                 item.Header.Add("Accept-Language", "en-US;q=0.5,en;q=0.3");
                 item.Header.Add("Accept-Encoding", acceptEncoding);
+                item.Header.Add("Upgrade-Insecure-Requests", "1");
                 result = http.GetHtml(item);
                 string tmpCookie;
                 if (!IndexPageCheck(result, item, out tmpCookie))
                 {
-                    Console.WriteLine("Index page Robots check failed over 3 times!!!");
+                    Console.WriteLine("MessageBox|Index page Robots check failed over 3 times!!!");
                     return false;
                 }
                 mainCookie = HttpCookieHelper.CombineCookie(mainCookie, tmpCookie);
@@ -91,23 +105,23 @@ namespace QIC.Sport.Odds.Collector.Ibc.Taker
                     if (result.Html.Contains("window.location.href='index.aspx"))
                     {
                         Console.WriteLine("maxbet website is under maintenance!!!");
-                        logger.Debug("maxbet website is under maintenance!!!");
+                        logger.Debug("MessageBox|maxbet website is under maintenance!!!");
                         return false;
                     }
 
                     //  请求用DeviceID作为cookie请求JS
-                    item = new HttpItem()
+                    var item1 = new HttpItem()
                     {
                         URL = "https://sc.detecas.com/di/activator.ashx",
                         UserAgent = userAgent,
                         Accept = "*/*",
-                        Referer = loginParam.WebUrl + "/Default.aspx",
+                        Referer = loginParam.WebUrl + "/Default.aspx?IsSSL=1",
                         Host = "sc.detecas.com",
                         KeepAlive = true,
                         //  只根据浏览器信息生成的，固定不变
                     };
-                    item.Header.Add("Accept-Language", "zh-CN,zh;q=0.8");
-                    var deviceRes = http.GetHtml(item);
+                    item1.Header.Add("Accept-Language", "zh-CN,zh;q=0.8");
+                    var deviceRes = http.GetHtml(item1);
 
                     //  模拟JS生成相关参数进行下一次请求获取CacheDeviceID
                     var cof = JsonConvert.DeserializeObject<Dictionary<string, string>>(RegGetStr(deviceRes.Html, "Config=", ";"));
@@ -121,6 +135,10 @@ namespace QIC.Sport.Odds.Collector.Ibc.Taker
                     HtmlNode node = htmlDoc.GetElementbyId("txtCode");
                     string code = "";
                     if (node != null) code = node.Attributes["value"].Value;
+                    item.URL = loginParam.WebUrl + "/getBeforeLoginCode.ashx?_=" + ToUnixTimeSpan(DateTime.Now);
+                    item.Cookie = mainCookie;
+                    var rs = http.GetHtml(item);
+                    code = rs.Html;
 
                     // 获取tk
                     HtmlNode node1 = htmlDoc.GetElementbyId("__tk");
@@ -134,7 +152,7 @@ namespace QIC.Sport.Odds.Collector.Ibc.Taker
                     //IBC有一个参数__di又两个加密JS制作 暂时无用所以没加
                     string _data = "txtID=" + loginParam.Username + "&txtPW2=" + loginParam.Password + "&txtPW=" + hidKey +
                                    "&txtCode=" + code +
-                                   "&hidKey=&hidLowerCasePW=&IEVerison=0&RMME=" + "on" + "&IsSSL=0&PF=Default&__tk=" + tk + "&__di=" + _di;// + "&detecas-analysis=" + dataAnaly;
+                                   "&hidKey=&hidServerKey=maxbet.com&hidLowerCasePW=&IEVerison=0&IsSSL=1&PF=Default&__tk=" + tk + "&__di=" + _di;// + "&detecas-analysis=" + dataAnaly;
 
                     item = new HttpItem()
                     {
@@ -145,12 +163,14 @@ namespace QIC.Sport.Odds.Collector.Ibc.Taker
                         Postdata = _data,
                         UserAgent = userAgent,
                         Accept = "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-                        Referer = loginParam.WebUrl + "/Default.aspx",
+                        Referer = loginParam.WebUrl + "/Default.aspx?IsSSL=1",
                         KeepAlive = true,
-                        Expect100Continue = false
+                        Expect100Continue = false,
+                        Host = "www.maxbet.com",
                     };
                     item.Header.Add("Accept-Language", "zh-CN,zh;q=0.8");
                     item.Header.Add("Cache-Control", "max-age=0");
+                    item.Header.Add("Upgrade-Insecure-Requests", "1");
                     item.KeepAlive = true;
                     result = http.GetHtml(item);
                     mainCookie = HttpCookieHelper.CombineCookie(mainCookie, result.Cookie);
@@ -168,10 +188,13 @@ namespace QIC.Sport.Odds.Collector.Ibc.Taker
                                 URL = loginParam.WebUrl + url,
                                 Cookie = mainCookie,
                                 UserAgent = userAgent,
-                                Accept = "*/*",
+                                Accept = accept,
                                 Referer = loginParam.WebUrl + "/ProcessLogin.aspx",
                                 KeepAlive = true,
                             };
+                            item.Header.Add("Accept-Language", "en-US;q=0.5,en;q=0.3");
+                            item.Header.Add("Accept-Encoding", acceptEncoding);
+                            item.Header.Add("Upgrade-Insecure-Requests", "1");
                             var r = http.GetHtml(item);
                             localUrl = RegGetStr(r.Html, "href=\"", ".com") + ".com";
                             if (!r.RedirectUrl.Contains("ValidateToken"))
@@ -188,7 +211,7 @@ namespace QIC.Sport.Odds.Collector.Ibc.Taker
 
                             if (r.Html.Contains("ChangeAccountPassword"))
                             {
-                                Console.WriteLine("Need to change the account password on the IBC website.");
+                                Console.WriteLine("MessageBox|Need to change the account password on the IBC website.");
                                 Thread.Sleep(2 * 60 * 1000);
                                 return false;
                             }
@@ -243,16 +266,22 @@ namespace QIC.Sport.Odds.Collector.Ibc.Taker
 
                         if (result.StatusCode == HttpStatusCode.OK)
                         {
-                            if (!GetNecessaryParam(result.Html)) return false;
+                            if (!ValidateFailed(result.Html)) return false;
+
+                            if (!GetNecessaryParam(result.Html, mainCookie + result.Cookie))
+                            {
+                                logger.Error("Cannot get necessaryParam , html = " + result.Html);
+                                return false;
+                            }
                             mainCookie += result.Cookie;
 
                             Console.WriteLine("Login Success.");
                             logger.Info("Login Success!");
                             Available = true;
                             Status = TakerStatus.Started;
-
-                            //登录成功后进行心跳连接，每1分钟post一次，以确认在线
-                            Task.Run(() => { LoginCheckin(mainCookie, localUrl); });
+                            checkCookie = mainCookie;
+                            checkUrl = localUrl;
+                            loginCheckTimer.Start();
                             return true;
                         }
                     }
@@ -266,6 +295,42 @@ namespace QIC.Sport.Odds.Collector.Ibc.Taker
                 logger.Error(ex.ToString());
                 return false;
             }
+        }
+        private bool ValidateFailed(string html)
+        {
+            if (html.Contains("Incorrect username/password"))
+            {
+                Console.WriteLine("MessageBox|Incorrect username/password");
+                Thread.Sleep(2 * 60 * 1000);
+                return false;
+            }
+            else if (html.Contains("locked"))
+            {
+                Console.WriteLine("MessageBox|Account has been locked!");
+                Thread.Sleep(2 * 60 * 1000);
+                return false;
+            }
+            else
+            {
+                var h = html.ToLower();
+                if (h.Contains("login too often"))
+                {
+                    if (h.Contains("5 minutes"))
+                    {
+                        Console.WriteLine("Login too often,current IP address has been blocked!");
+                        Thread.Sleep(60000 + 6 * 60 * 1000);
+                        return false;
+                    }
+                    else
+                    {
+                        Console.WriteLine("Login too often,will wait 60s and retry.");
+                        Thread.Sleep(60000);
+                        return false;
+                    }
+                }
+            }
+
+            return true;
         }
         public void LoginTask()
         {
@@ -336,7 +401,7 @@ namespace QIC.Sport.Odds.Collector.Ibc.Taker
             }
             return u;
         }
-        private bool GetNecessaryParam(string html)
+        private bool GetNecessaryParam(string html, string cookie)
         {
             HtmlDocument doc = new HtmlDocument();
             doc.LoadHtml(html);
@@ -345,7 +410,7 @@ namespace QIC.Sport.Odds.Collector.Ibc.Taker
 
             //拿到主界面的token和id
             Regex regex = new Regex("tk\":\"(.*)\",\"no\":(.*)},.*(?<=ID)\"(.*)\"(?=Name)");
-            var mc = regex.Match(node.InnerText);
+            var mc = regex.Match(html);
             string token = mc.Groups[1].Value;
             string rid = mc.Groups[2].Value;
             string id = mc.Groups[3].Value.Replace(":", "").Replace(",", "");
@@ -354,14 +419,22 @@ namespace QIC.Sport.Odds.Collector.Ibc.Taker
                 Id = id,
                 Rid = rid,
                 LocalUrl = localUrl,
-                Token = token
+                Token = token,
+                Cookie = cookie
             };
+            if (string.IsNullOrEmpty(token) || string.IsNullOrEmpty(rid) || string.IsNullOrEmpty(id))
+            {
+                logger.Error("Cannot parse param. html = " + html);
+                return false;
+            }
             return true;
         }
-        private void LoginCheckin(string cookie, string url)
+        private void LoginCheckin(object sender, ElapsedEventArgs ee)
         {
             try
             {
+                var cookie = checkCookie;
+                var url = checkUrl;
                 HttpHelper helper = new HttpHelper();
                 HttpItem item = new HttpItem()
                 {
@@ -371,8 +444,9 @@ namespace QIC.Sport.Odds.Collector.Ibc.Taker
                     Accept = accept,
                     UserAgent = userAgent,
                     Referer = url + "/sports",
-                    Host = url.Replace("https://", ""),
+                    Host = Regex.Split(url, "//")[1],
                     Cookie = cookie,
+                    Expect100Continue = false,
                     Postdata = "0",
                 };
                 item.Header.Add("username", loginParam.Username);
@@ -383,44 +457,45 @@ namespace QIC.Sport.Odds.Collector.Ibc.Taker
                 item.Header.Add("Accept-Language", "en-US;q=0.5,en;q=0.3");
                 item.Header.Add("Accept-Encoding", acceptEncoding);
 
-                while (true)
+                var r = helper.GetHtml(item);
+                var res = JsonConvert.DeserializeObject<dynamic>(r.Html);
+                //获取返回的json，解析出需要的ErrorCode，判断当前状态
+                var ErrorCode = res["ErrorCode"].ToString();
+                //0表示登录状态正常，其他表示异常。
+                if (ErrorCode != "0")
                 {
-                    //每一分钟post一次
-                    Thread.Sleep(1000 * 60);
-                    try
+                    logger.Error("LoginCheck Failed ErrorCode = " + ErrorCode + "\r\nHtml = " + r.Html);
+                    return;
+                    loginCheckTimer.Stop();
+                    var logout = new HttpItem()
                     {
-                        var r = helper.GetHtml(item);
-                        var res = JsonConvert.DeserializeObject<dynamic>(r.Html);
-                        //获取返回的json，解析出需要的ErrorCode，判断当前状态
-                        var ErrorCode = res["ErrorCode"].ToString();
-                        //0表示登录状态正常，其他表示异常。
-                        if (ErrorCode != "0")
-                        {
-                            //如果登录异常，就重新登录。
-                            //  todo 检查心跳失败，重新订阅
-                            //LoginTask();
-                            return;
-                            //string result = Instance.BeginLogin();
-                            //if (!string.IsNullOrEmpty(result))
-                            //{
-                            //    //登录成功后，重新初始化和开启socket
-                            //    SocketService.Instance.SocketInit(result);
-                            //    SocketService.Instance.Stop();
-                            //    return;
-                            //}
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        logger.Error(e.ToString());
-                    }
-                    //logger.Error("LoginCheck!!!");
+                        URL = url + "/Logout",
+                        Method = "GET",
+                        KeepAlive = true,
+                        Accept = accept,
+                        UserAgent = userAgent,
+                        Referer = url + "/sports",
+                        Host = Regex.Split(url, "//")[1],
+                        Cookie = cookie,
+                        Allowautoredirect = true
+                    };
+                    helper.GetHtml(logout);
+                    Thread.Sleep(10 * 1000);
+                    if (ForceCloseSocket != null) ForceCloseSocket();
+                    return;
                 }
+                logger.Debug("LoginCheckin cookie = " + cookie);
+
             }
             catch (Exception e)
             {
                 logger.Error(e.ToString());
             }
+        }
+        public static long ToUnixTimeSpan(DateTime date)
+        {
+            var startTime = TimeZone.CurrentTimeZone.ToLocalTime(new DateTime(1970, 1, 1)); // 当地时区
+            return (long)(date - startTime).TotalMilliseconds; // 相差毫秒数
         }
     }
 }

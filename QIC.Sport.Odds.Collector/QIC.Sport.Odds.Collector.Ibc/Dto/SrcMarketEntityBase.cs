@@ -40,7 +40,7 @@ namespace QIC.Sport.Odds.Collector.Ibc.Dto
 
         internal override MarketEntityBase ToMarketEntity(int matchID, int stage)
         {
-            //if (OddsStatus == "closePrice") return null;
+            if (OddsStatus == "closePrice") return null;
             if (!Hdp.HasValue || !HomeOdds.HasValue || !AwayOdds.HasValue) return null;
             if (Hdp.Value == 0 && HomeOdds.Value == 0 && AwayOdds.Value == 0) return null;
 

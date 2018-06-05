@@ -19,6 +19,10 @@ namespace QIC.Sport.Odds.Collector.Ibc.Dto
 
         public string HomeTeamName { get; set; }
 
+        public string AwayTeamNameExtension { get; set; }
+
+        public string HomeTeamNameExtension { get; set; }
+
         public string AwayTeamId { get; set; }
 
         public string HomeTeamId { get; set; }
@@ -30,13 +34,14 @@ namespace QIC.Sport.Odds.Collector.Ibc.Dto
         public string LiveAwayScore { get; set; }
 
         public string LiveHomeScore { get; set; }
-
+        public string LiveScore { get; set; }  //  篮球的
         public string AwayRed { get; set; }
 
         public string HomeRed { get; set; }
         public string Liveperiod { get; set; }
         public string Livetimer { get; set; }
         public string Csstatus { get; set; }
+        public string Isneutral { get; set; }
         public bool CompareSet(JToken jtoken)
         {
             bool b = false;
@@ -51,8 +56,10 @@ namespace QIC.Sport.Odds.Collector.Ibc.Dto
                         case "leaguenameen": LeagueName = jtoken[item.Name].ToString(); b = true; break;
                         case "awayid": AwayTeamId = jtoken[item.Name].ToString(); b = true; break;
                         case "ateamnameen": AwayTeamName = jtoken[item.Name].ToString(); b = true; break;
+                        case "ateamname2en": AwayTeamNameExtension = jtoken[item.Name].ToString(); b = true; break;
                         case "homeid": HomeTeamId = jtoken[item.Name].ToString(); b = true; break;
                         case "hteamnameen": HomeTeamName = jtoken[item.Name].ToString(); b = true; break;
+                        case "hteamname2en": HomeTeamNameExtension = jtoken[item.Name].ToString(); b = true; break;
                         case "kickofftime": KickOffTime = jtoken[item.Name].ToString(); b = true; break;
                         case "injurytime": InjuryTime = jtoken[item.Name].ToString(); b = true; break;
                         case "liveawayscore": LiveAwayScore = jtoken[item.Name].ToString(); b = true; break;
@@ -62,6 +69,8 @@ namespace QIC.Sport.Odds.Collector.Ibc.Dto
                         case "liveperiod": Liveperiod = jtoken[item.Name].ToString(); b = true; break;
                         case "livetimer": Livetimer = jtoken[item.Name].ToString(); b = true; break;
                         case "csstatus": Csstatus = jtoken[item.Name].ToString(); b = true; break;
+                        case "live_score": LiveScore = jtoken[item.Name].ToString(); b = true; break;
+                        case "isneutral": Isneutral = jtoken[item.Name].ToString(); b = true; break; ;
                         default: break;
                     }
                 }
@@ -74,4 +83,25 @@ namespace QIC.Sport.Odds.Collector.Ibc.Dto
             return b;
         }
     }
+
+    public class BasketballScore
+    {
+        public string llp { get; set; }
+        public string hls { get; set; }
+        public string h1q { get; set; }
+        public string h2q { get; set; }
+        public string h3q { get; set; }
+        public string h4q { get; set; }
+        public string a1q { get; set; }
+        public string a2q { get; set; }
+        public string a3q { get; set; }
+        public string a4q { get; set; }
+        public string hot { get; set; }
+        public string aot { get; set; }
+        public string v { get; set; }
+        public string bkg { get; set; }
+        public string bkmb { get; set; }
+        public string bkom { get; set; }
+    }
+
 }

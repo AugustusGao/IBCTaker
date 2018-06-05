@@ -36,7 +36,7 @@ namespace QIC.Sport.Odds.Collector.Cache.CacheEntity
         public int RowNum { get; set; }
         public int HTRowNum { get; set; }
         public int Stage { get; set; }
-
+        public bool IsSelfCreate { get; set; }  //  程序自己生成的，外面网站没有的比赛。IBC的每个小节的比赛是生成的
         public int MatchID;
         //CouID-Market
         public Dictionary<long, MarketEntityBase> MarketDic { get; set; }
@@ -94,9 +94,18 @@ namespace QIC.Sport.Odds.Collector.Cache.CacheEntity
 
             foreach (var m in MarketDic.Values)
             {
-                if (!limitMarketList.Contains(m.MarketID)) continue;
-                if (marketDic.ContainsKey(m.CouID) && marketDic[m.CouID].IsIntegrity()) continue;
-                closetList.Add(m.CouID);
+                try
+                {
+
+                    if (!limitMarketList.Contains(m.MarketID)) continue;
+                    if (marketDic.ContainsKey(m.CouID) && marketDic[m.CouID].IsIntegrity()) continue;
+                    closetList.Add(m.CouID);
+                }
+                catch (Exception e)
+                {
+                    logger.Error(e.ToString());
+                    logger.Error("market = " + JsonConvert.SerializeObject(m));
+                }
             }
 
             foreach (var aum in marketDic.Values)

@@ -30,5 +30,10 @@ namespace QIC.Sport.Odds.Collector.Ibc.OddsManager
 
             return kp;
         }
+
+        public void ClearAll()
+        {
+            dicKeepOdds.Clear();
+        }
     }
 }

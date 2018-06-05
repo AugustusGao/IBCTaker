@@ -37,17 +37,21 @@
     <Reference Include="log4net">
       <HintPath>..\..\..\..\lib\log4net.dll</HintPath>
     </Reference>
+    <Reference Include="ML.EGP.Enums, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\lib\ML.EGP.Enums.dll</HintPath>
+    </Reference>
     <Reference Include="ML.EGP.Sport.Common">
       <HintPath>..\..\..\..\..\ML.Sport\Code\lib\ML.EGP.Sport.Common.dll</HintPath>
     </Reference>
     <Reference Include="ML.EGP.Sport.Common.Enums">
       <HintPath>..\..\..\..\lib\ML.EGP.Sport.Common.Enums.dll</HintPath>
     </Reference>
+    <Reference Include="ML.EGP.Sport.Param">
+      <HintPath>..\..\..\..\lib\ML.EGP.Sport.Param.dll</HintPath>
+    </Reference>
     <Reference Include="ML.Infrastructure">
       <HintPath>..\..\..\..\lib\ML.Infrastructure.dll</HintPath>
-    </Reference>
-    <Reference Include="ML.NetComponent">
-      <HintPath>..\..\..\..\lib\ML.NetComponent.dll</HintPath>
     </Reference>
     <Reference Include="ML.Security">
       <HintPath>..\..\..\..\..\Sport\lib\ML.Security.dll</HintPath>
@@ -75,6 +79,7 @@
     <Compile Include="Dto\SocketInitDto.cs" />
     <Compile Include="Dto\SrcMarketEntityBase.cs" />
     <Compile Include="Enum.cs" />
+    <Compile Include="Handle\ExceptionHandle.cs" />
     <Compile Include="Handle\HandleFactory.cs" />
     <Compile Include="Handle\NormalHandle.cs" />
     <Compile Include="IbcSubscriptionManager.cs" />
@@ -95,6 +100,7 @@
     <Compile Include="Taker\WebSocket\IWebSocketClient.cs" />
     <Compile Include="TimeManager\LiveInfo.cs" />
     <Compile Include="TimeManager\LiveInfoManager.cs" />
+    <Compile Include="Tools\EmailTools.cs" />
     <Compile Include="Tools\IbcTools.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -102,6 +108,10 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\..\..\..\ML.Sport\Code\ML.NetComponent\ML.NetComponent.csproj">
+      <Project>{4c2ded86-2916-4103-8485-241378f33879}</Project>
+      <Name>ML.NetComponent</Name>
+    </ProjectReference>
     <ProjectReference Include="..\QIC.Sport.Odds.Collector.Cache\QIC.Sport.Odds.Collector.Cache.csproj">
       <Project>{7bdfcdb2-baac-4e16-ae5b-3afc5776a681}</Project>
       <Name>QIC.Sport.Odds.Collector.Cache</Name>

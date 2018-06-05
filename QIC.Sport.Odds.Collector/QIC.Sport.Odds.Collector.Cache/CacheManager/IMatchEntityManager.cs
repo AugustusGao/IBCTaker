@@ -9,7 +9,7 @@ namespace QIC.Sport.Odds.Collector.Cache.CacheManager
 {
     public interface IMatchEntityManager
     {
-        MatchEntity GetOrAdd(string srcMatchID, string srcLeague, string srcHome, string srcAway, DateTime srcMatchDate, int sportID);
+        MatchEntity GetOrAdd(string srcMatchID, string srcLeague, string srcHome, string srcAway, DateTime srcMatchDate, int sportID, bool isSelfCreate = false);
         void MatchLink(string srcMatchID, int matchID);
         MatchEntity Get(string srcMatchID);
         int GetMatchID(string srcMatchID);

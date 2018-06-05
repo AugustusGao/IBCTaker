@@ -11,6 +11,6 @@ namespace QIC.Sport.Inplay.Collector.Core
     {
         void Start();
         void Stop();
-        void Init(IMatchWorkManager workManager);
+        void Init(IMatchWorkManager workManager, string ip, string port);
     }
 }

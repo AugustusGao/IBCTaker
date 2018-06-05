@@ -10,13 +10,9 @@ namespace QIC.Sport.Odds.Collector.Ibc.Param
 {
     public class LoginParam : BaseParam, ISubscribeParam
     {
-        private string webUrl = ConfigSingleton.CreateInstance().GetAppConfig<string>("Ibc");
         public string Username { get; set; }
         public string Password { get; set; }
-        public string WebUrl
-        {
-            get { return webUrl; }
-        }
+        public string WebUrl { get; set; }
         public string Key
         {
             get { return "Login"; }

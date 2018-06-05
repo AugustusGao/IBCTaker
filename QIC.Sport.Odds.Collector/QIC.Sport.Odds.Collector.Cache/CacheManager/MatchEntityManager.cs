@@ -27,21 +27,21 @@ namespace QIC.Sport.Odds.Collector.Cache.CacheManager
         {
             communicator = c;
         }
-        public MatchEntity GetOrAdd(string srcMatchID, string srcLeague, string srcHome, string srcAway, DateTime srcMatchDate, int sportID)
+        public MatchEntity GetOrAdd(string srcMatchID, string srcLeague, string srcHome, string srcAway, DateTime srcMatchDate, int sportID, bool isSelfCreate = false)
         {
             srcLeague = srcLeague.Trim().ToUpper();
             srcHome = srcHome.Trim();
             srcAway = srcAway.Trim();
             if (string.IsNullOrEmpty(srcLeague) || string.IsNullOrEmpty(srcHome) || string.IsNullOrEmpty(srcAway)) return null;
 
-            MatchEntity dto = matchDic.GetOrAdd(srcMatchID, new MatchEntity() { SrcMatchID = srcMatchID, SportID = sportID, Communicator = communicator });
+            MatchEntity dto = matchDic.GetOrAdd(srcMatchID, new MatchEntity() { SrcMatchID = srcMatchID, SportID = sportID, Communicator = communicator, IsSelfCreate = isSelfCreate });
             bool isMatchDateChanged;
             bool isNewMatch = CheckMatch(srcMatchID, srcLeague, srcHome, srcAway, srcMatchDate, dto, out isMatchDateChanged);
             if (isNewMatch) SendSrcMatchInfo(dto);
             else if (isMatchDateChanged) SendSrcMatchDate(dto);
 
             //  测试
-            //if (srcMatchID == "24811885") dto.MatchID = 1234;
+            //if (srcMatchID == "24747505") dto.MatchID = 1234;
 
             return dto;
         }

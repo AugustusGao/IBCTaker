@@ -38,28 +38,37 @@ namespace QIC.Sport.Odds.Collector.Ibc.TimeManager
             }
         }
 
+        public int IbcDiffSyncTime;      //  ibc和本机同步时间差值
         public LiveInfo AddOrUpdate(LiveInfo liveTimeInfo)
         {
             LiveInfo ret = liveTimeInfo;
             dicLiveTimeInfo.AddOrUpdate(liveTimeInfo.SrcMatchId, liveTimeInfo, (k, v) =>
             {
                 if (v.Equals(liveTimeInfo)) return v;
-                v.Phase = liveTimeInfo.Phase ?? v.Phase;
+                v.Csstatus = string.IsNullOrEmpty(liveTimeInfo.Csstatus) ? v.Csstatus : liveTimeInfo.Csstatus;
+                v.Liveperiod = string.IsNullOrEmpty(liveTimeInfo.Liveperiod) ? v.Liveperiod : liveTimeInfo.Liveperiod;
                 v.PhaseStartUtc = string.IsNullOrEmpty(liveTimeInfo.PhaseStartUtc) ? v.PhaseStartUtc : liveTimeInfo.PhaseStartUtc;
                 v.HomeScore = liveTimeInfo.HomeScore ?? v.HomeScore;
                 v.AwayScore = liveTimeInfo.AwayScore ?? v.AwayScore;
                 v.HomeRed = liveTimeInfo.HomeRed ?? v.HomeRed;
                 v.AwayRed = liveTimeInfo.AwayRed ?? v.AwayRed;
+                v.PhaseStartUtcUpdateTime = liveTimeInfo.PhaseStartUtcUpdateTime ?? v.PhaseStartUtcUpdateTime;
                 ret = v;
                 return v;
             });
             return ret;
         }
 
-        public void RemoveBySrcMatchId(string srcMatchId)
+        public void RemoveBySrcMatchId(string srcMatchId, int stage)
         {
+            if (stage != 3) return;
             LiveInfo lti;
             dicLiveTimeInfo.TryRemove(srcMatchId, out lti);
+        }
+
+        public void ClearAll()
+        {
+            dicLiveTimeInfo.Clear();
         }
 
         private void Init()
@@ -81,6 +90,7 @@ namespace QIC.Sport.Odds.Collector.Ibc.TimeManager
                 }
             });
         }
+
         private void SendLiveTime()
         {
             foreach (var timeInfo in dicLiveTimeInfo)
@@ -93,7 +103,7 @@ namespace QIC.Sport.Odds.Collector.Ibc.TimeManager
                 }
                 else
                 {
-                    me.CompareToTime(timeInfo.Value.Phase.Value, timeInfo.Value.Phase == 0 ? 0 : timeInfo.Value.LiveTime);
+                    me.CompareToTime(timeInfo.Value.Phase.Value, timeInfo.Value.Phase == 0 ? 0 : timeInfo.Value.LiveTime(IbcDiffSyncTime));
                 }
             }
         }

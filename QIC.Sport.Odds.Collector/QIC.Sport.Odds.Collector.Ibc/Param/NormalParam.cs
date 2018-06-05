@@ -10,17 +10,19 @@ namespace QIC.Sport.Odds.Collector.Ibc.Param
 {
     public class NormalParam : BaseParam, ISubscribeParam
     {
+        public string SubscribeType = "odds";
         public int Stage { get; set; }
         public SocketParam SocketParam { get; set; }
-        public List<int> LimitMarketIdList = new List<int>() { 1, 2, 3, 4, 5, 6 };
+        public SyncTimeParam TimeParam { get; set; }
+        public List<int> LimitMarketIdList = new List<int>() { 1, 2, 3, 4, 5, 6, 7, 8, 16 };
         public string Topic
         {
-            get { return string.Format("42[\"subscribe\",\"odds\",{0}]", JsonConvert.SerializeObject(SocketParam)); }
+            get { return string.Format("42[\"subscribe\",\"" + SubscribeType + "\",{0}]", SubscribeType == "odds" ? JsonConvert.SerializeObject(SocketParam) : JsonConvert.SerializeObject(TimeParam)); }
         }
 
         public string Key
         {
-            get { return SocketParam.id; }
+            get { return SocketParam != null ? SocketParam.id : TimeParam.id; }
         }
     }
 
@@ -31,6 +33,13 @@ namespace QIC.Sport.Odds.Collector.Ibc.Param
         public string RMark { get; set; }
         public int rev { get; set; }
         public Condition condition { get; set; }
+    }
+
+    public class SyncTimeParam
+    {
+        public string id { get; set; }
+        public int rev { get; set; }
+        public string condition { get; set; }
     }
 
     public class Condition

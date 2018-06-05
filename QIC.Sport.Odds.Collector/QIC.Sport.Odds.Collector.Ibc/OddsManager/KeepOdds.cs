@@ -35,6 +35,15 @@ namespace QIC.Sport.Odds.Collector.Ibc.OddsManager
         {
             KeepOddsMatch k;
             dicSrcMatch.TryRemove(srcMatchId, out k);
+            //  移除原始盘口
+            var oddsIds = k.GetOddsIdList();
+            oddsIds.ForEach(RemoveMarketByOddsId);
+        }
+
+        public void RemoveMarketByOddsId(string oddsId)
+        {
+            SrcMarketEntityBase s;
+            dicMarket.TryRemove(oddsId, out s);
         }
         public T AddOrGetMarket<T>(string oddsId) where T : SrcMarketEntityBase, new()
         {
@@ -78,6 +87,7 @@ namespace QIC.Sport.Odds.Collector.Ibc.OddsManager
                     var meb = b.ToMarketEntity(matchId, stage);
                     if (meb == null) continue;
 
+                    if (dic.ContainsKey(meb.CouID)) continue;   //  两个位置上的Hdp值一样了,只保留一个即可
                     dic.Add(meb.CouID, meb);
                 }
             }

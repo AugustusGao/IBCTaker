@@ -4,11 +4,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 
 namespace QIC.Sport.Odds.Collector.Ibc.OddsManager
 {
     public class KeepOddsMatch
     {
+        [JsonProperty]
         ConcurrentDictionary<int, List<string>> dicOddsId = new ConcurrentDictionary<int, List<string>>();
         public void DeleteOddsIdList(int marketID, List<string> list)
         {
@@ -59,8 +61,8 @@ namespace QIC.Sport.Odds.Collector.Ibc.OddsManager
         }
         public bool GetRowNum(out int rowNum, out int htRowNum)
         {
-            var ft = dicOddsId.Where(kv => kv.Key == 1 || kv.Key == 3).ToArray();
-            var ht = dicOddsId.Where(kv => kv.Key == 2 || kv.Key == 4).ToArray();
+            var ft = dicOddsId.Where(kv => kv.Key == 1 || kv.Key == 3 || kv.Key == 7 || kv.Key == 16).ToArray();
+            var ht = dicOddsId.Where(kv => kv.Key == 2 || kv.Key == 4 || kv.Key == 8).ToArray();
             rowNum = ft.Any() ? ft.Max(kv => kv.Value.Count) : 0;
             htRowNum = ht.Any() ? ht.Max(kv => kv.Value.Count) : 0;
             return true;

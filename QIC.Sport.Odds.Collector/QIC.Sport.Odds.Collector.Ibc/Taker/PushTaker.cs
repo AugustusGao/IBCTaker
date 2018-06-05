@@ -4,13 +4,18 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Timers;
 using log4net;
+using ML.Infrastructure.Config;
+using ML.NetComponent.Http;
 using Newtonsoft.Json;
 using QIC.Sport.Odds.Collector.Ibc.Dto;
 using QIC.Sport.Odds.Collector.Ibc.Taker.WebSocket;
 using QIC.Sport.Odds.Collector.Ibc.Taker.WebSocket.EventArgs;
 using WebSocketSharp;
+using WebSocketSharp.Net;
 using CloseEventArgs = WebSocketSharp.CloseEventArgs;
+using Timer = System.Timers.Timer;
 
 namespace QIC.Sport.Odds.Collector.Ibc.Taker
 {
@@ -20,16 +25,23 @@ namespace QIC.Sport.Odds.Collector.Ibc.Taker
         private bool isClosed = false;
         private bool isConnected = false;
         private WebSocketSharp.WebSocket socket;
+        private Timer checkTimer;
+        private int timeOut = ConfigSingleton.CreateInstance().GetAppConfig<int>("WebSocketWaitTime", 10);
 
         public bool IsConnected { get { return isConnected; } }
         public void Init(SocketInitDto dto)
         {
             socket = new WebSocketSharp.WebSocket(dto.WssUrl);
+            socket.WaitTime = new TimeSpan(0, 0, 0, timeOut);
             socket.Origin = dto.LocalUrl;
             socket.OnMessage += Socket_OnMessage;
             socket.OnError += Socket_OnError;
             socket.OnClose += Socket_OnClose;
 
+            checkTimer = new Timer();
+            checkTimer.Interval = 25 * 1000;
+            checkTimer.AutoReset = true;
+            checkTimer.Elapsed += HeartCheck;
         }
 
         private void Socket_OnClose(object sender, CloseEventArgs e)
@@ -38,9 +50,9 @@ namespace QIC.Sport.Odds.Collector.Ibc.Taker
             {
                 isClosed = true;
                 isConnected = false;
-                OnClosed(new WebSocket.EventArgs.CloseEventArgs() { Code = e.Code, Reason = e.Reason });
+                checkTimer.Stop();
                 logger.Error("Socket_OnClose, CloseEventArgs = " + JsonConvert.SerializeObject(e));
-                //OnClosed(new QIC.Sport.Signal.Collector.Bet365.WebSocket.EventParam.CloseEventArgs() { ClientID = ReaditClientID, Code = e.Code, Reason = e.Reason });
+                OnClosed(new WebSocket.EventArgs.CloseEventArgs() { Code = e.Code, Reason = e.Reason });
             }
             catch (Exception ex)
             {
@@ -52,10 +64,8 @@ namespace QIC.Sport.Odds.Collector.Ibc.Taker
         {
             try
             {
-                //isClosed = true;
-                //isConnected = false;
                 logger.Error("Socket_OnError, ErrorEventArgs = " + JsonConvert.SerializeObject(e));
-                //OnClosed(new QIC.Sport.Signal.Collector.Bet365.WebSocket.EventParam.CloseEventArgs() { ClientID = ReaditClientID, Code = e.Code, Reason = e.Reason });
+                socket.Close(CloseStatusCode.Normal);   //  触发OnClose事件
             }
             catch (Exception ex)
             {
@@ -66,20 +76,26 @@ namespace QIC.Sport.Odds.Collector.Ibc.Taker
         private void Socket_OnMessage(object sender, MessageEventArgs e)
         {
             logger.Debug(e.Data);
-
+            if (e.Data.Contains("Not authorized") || e.Data.Contains("disconnect") || e.Data.Contains("error") || e.Data.Contains("verif") || e.Data.Contains("failed"))
+            {
+                logger.Error("Socket_OnMessage, ErrorEventArgs = " + e.Data);
+                socket.Close(CloseStatusCode.Normal);   //  触发OnClose事件
+                return;
+            }
             OnMessageReceived(new MessageReceiveEventArgs() { Data = e.Data });
         }
 
         public void Close()
         {
-            throw new NotImplementedException();
+            socket.Close(CloseStatusCode.Normal);
         }
 
         public bool Connect()
         {
             socket.Connect();
             isConnected = socket.ReadyState == WebSocketState.Open;
-            Task.Run(() => HeartCheck());
+            checkTimer.Start();
+
             return isConnected;
         }
 
@@ -101,6 +117,12 @@ namespace QIC.Sport.Odds.Collector.Ibc.Taker
                     if (socket.ReadyState == WebSocketState.Open)
                         socket.Send("2");
             }
+        }
+        private void HeartCheck(object sender, ElapsedEventArgs e)
+        {
+            if (socket != null)
+                if (socket.ReadyState == WebSocketState.Open)
+                    socket.Send("2");
         }
     }
 }

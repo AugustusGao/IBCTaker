@@ -9,5 +9,6 @@ namespace QIC.Sport.Odds.Collector.Ibc
     public enum DataType
     {
         Normal,
+        Exception,
     }
 }

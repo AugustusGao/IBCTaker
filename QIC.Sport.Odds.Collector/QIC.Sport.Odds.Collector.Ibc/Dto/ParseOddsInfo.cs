@@ -28,6 +28,9 @@ namespace QIC.Sport.Odds.Collector.Ibc.Dto
                 case "12":
                 case "20":
                 case "21":
+                case "609":
+                case "610":
+                case "611":
                 case "153": poi = new ParseTwoOdds(); break;
                 case "5":
                 case "15": poi = new Parse1x2Odds(); break;
@@ -46,7 +49,8 @@ namespace QIC.Sport.Odds.Collector.Ibc.Dto
         public int MarketId { get; set; }
         //状态
         public string OddsStatus { get; set; }
-        public virtual bool CompareSet(JToken jtoken)
+        public string Resourceid { get; set; }
+        public virtual bool CompareSet(JToken jtoken, bool isUpdate = true)
         {
             return false;
         }
@@ -64,10 +68,11 @@ namespace QIC.Sport.Odds.Collector.Ibc.Dto
         public string AwayOdds { get; set; }
         public string Hdp1 { get; set; }
         public string Hdp2 { get; set; }
-        public override bool CompareSet(JToken jtoken)
+        public override bool CompareSet(JToken jtoken, bool isUpdate = true)
         {
 
             bool b = false;
+            if (!isUpdate) Hdp1 = "0";
             foreach (JProperty item in jtoken)
             {
                 try
@@ -82,6 +87,7 @@ namespace QIC.Sport.Odds.Collector.Ibc.Dto
                         case "odds2a": AwayOdds = jtoken[item.Name].ToString(); b = true; break;
                         case "hdp1": Hdp1 = jtoken[item.Name].ToString(); b = true; break;
                         case "hdp2": Hdp2 = jtoken[item.Name].ToString(); b = true; break;
+                        case "resourceid": Resourceid = jtoken[item.Name].ToString(); b = true; break;
                         default: break;
                     }
                 }
@@ -126,7 +132,7 @@ namespace QIC.Sport.Odds.Collector.Ibc.Dto
         public string HomeOdds { get; set; }
         public string AwayOdds { get; set; }
         public string DrawOdds { get; set; }
-        public override bool CompareSet(JToken jtoken)
+        public override bool CompareSet(JToken jtoken, bool isUpdate = true)
         {
             bool b = false;
             foreach (JProperty item in jtoken)

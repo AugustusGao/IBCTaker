@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using log4net;
+using ML.Infrastructure.Config;
 using ML.Infrastructure.IOC;
 using QIC.Sport.Odds.Collector.Common;
 using QIC.Sport.Odds.Collector.Core.MatchWorkerManager;
@@ -22,7 +23,7 @@ namespace QIC.Sport.Odds.Collector.Ibc
         private GroupLimitedConcurrencyLevelTaskScheduler lcts;
         private TaskFactory factory;
         private KeepOddsManager keepOddsManager = KeepOddsManager.Instance;
-
+        private bool isClosed = false;
         public void Init()
         {
             HandleFactory = new HandleFactory();
@@ -42,19 +43,12 @@ namespace QIC.Sport.Odds.Collector.Ibc
         }
         public void Start()
         {
-            //  todo 添加登录任务
-            var loginParam = new LoginParam()
-            {
-                Username = "S799H9900130",
-                Password = "aaaa2222",
-                TakeMode = TakeMode.Pull
-            };
-            SubscriptionManager.Subscribe(loginParam);
+
         }
 
         public void Stop()
         {
-
+            isClosed = true;
         }
         private void manager_DataReceived(object sender, DataReceiveEventArgs e)
         {
@@ -62,36 +56,50 @@ namespace QIC.Sport.Odds.Collector.Ibc
         }
         private void DataProcess()
         {
-            while (true)
+            while (!isClosed)
             {
-                if (dataQueue.IsEmpty)
+                try
                 {
-                    Thread.Sleep(100);
-                    continue;
+                    if (dataQueue.IsEmpty)
+                    {
+                        Thread.Sleep(100);
+                        continue;
+                    }
+
+                    ITakeData data;
+                    if (!dataQueue.TryDequeue(out data) || data == null) continue;
+
+                    var pd = data as PushDataDto;
+                    var np = pd.Param as NormalParam;
+                    GroupState gs = new GroupState() { GroupID = np == null ? "1" : np.Stage + "" };
+                    factory.StartNew((s) =>
+                    {
+                        AssignHandleProcess(data);
+                    }, gs);
                 }
-
-                ITakeData data;
-                if (!dataQueue.TryDequeue(out data) || data == null) continue;
-
-                var pd = data as PushDataDto;
-                var np = pd.Param as NormalParam;
-                GroupState gs = new GroupState() { GroupID = np.Stage + "" };
-                factory.StartNew((s) =>
+                catch (Exception e)
                 {
-                    AssignHandleProcess(data);
-                }, gs);
+                    logger.Error(e.ToString());
+                }
             }
         }
 
         private void AssignHandleProcess(ITakeData data)
         {
-            var handle = HandleFactory.CreateHandle(data.DataType);
-            if (handle == null)
+            try
             {
-                logger.Error("Cannot create handle , DataType = " + data.DataType);
-                return;
+                var handle = HandleFactory.CreateHandle(data.DataType);
+                if (handle == null)
+                {
+                    logger.Error("Cannot create handle , DataType = " + data.DataType);
+                    return;
+                }
+                handle.ProcessData(data);
             }
-            handle.ProcessData(data);
+            catch (Exception e)
+            {
+                logger.Error(e.ToString());
+            }
         }
         public class GroupState : IGroupFlag
         {

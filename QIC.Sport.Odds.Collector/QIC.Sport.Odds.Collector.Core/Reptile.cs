@@ -73,8 +73,10 @@ namespace QIC.Sport.Odds.Collector.Core
             matchWorkManager.Stop();
         }
 
-        public void Init(IMatchWorkManager workManager)
+        public void Init(IMatchWorkManager workManager, string ip, string port)
         {
+            serverIP = ip;
+            serverPort = port;
             matchWorkManager = workManager;
         }
 
