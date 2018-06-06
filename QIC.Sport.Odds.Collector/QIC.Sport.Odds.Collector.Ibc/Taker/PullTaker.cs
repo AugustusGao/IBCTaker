@@ -275,6 +275,15 @@ namespace QIC.Sport.Odds.Collector.Ibc.Taker
                             }
                             mainCookie += result.Cookie;
 
+                            //  访问另一个子域名获取cookie
+                            item.URL = "https://agnj3.maxbet.com/socket.io/?gid=" + GetGid() + "&token=" + SocketInitDto.Token + "&id=" + SocketInitDto.Id + "&rid=" + SocketInitDto.Rid + "&EIO=3&transport=polling";
+                            item.Accept = "*/*";
+                            item.Host = "agnj3.maxbet.com";
+                            item.Referer = item.Referer + "/sports";
+                            var anotherRes = http.GetHtml(item);
+                            mainCookie = HttpCookieHelper.CombineCookie(mainCookie, anotherRes.Cookie);
+                            mainCookie = HttpCookieHelper.RemoveCookieByKey("io", mainCookie);
+
                             Console.WriteLine("Login Success.");
                             logger.Info("Login Success!");
                             Available = true;
@@ -440,25 +449,24 @@ namespace QIC.Sport.Odds.Collector.Ibc.Taker
                 {
                     URL = url + "/LoginCheckin/Index",
                     Method = "POST",
-                    KeepAlive = true,
-                    Accept = accept,
+                    Accept = "application/json, text/javascript, */*; q=0.01",
                     UserAgent = userAgent,
                     Referer = url + "/sports",
                     Host = Regex.Split(url, "//")[1],
-                    Cookie = cookie,
+                    Cookie = cookie + "_v1promo=1,Wel_" + loginParam.Username + "_=1,",
                     Expect100Continue = false,
-                    Postdata = "0",
+                    Postdata = "username=S688HZZ00S02&key=login",
                 };
+
                 item.Header.Add("username", loginParam.Username);
                 item.Header.Add("Origin", url);
                 item.Header.Add("X-Requested-With", "XMLHttpRequest");
-                //item.Header.Add("Accept-Encoding", "gzip, deflate, br");                              
-                //item.Header.Add("Accept-Language", "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7,ko;q=0.6");   //  中文
                 item.Header.Add("Accept-Language", "en-US;q=0.5,en;q=0.3");
                 item.Header.Add("Accept-Encoding", acceptEncoding);
 
                 var r = helper.GetHtml(item);
                 var res = JsonConvert.DeserializeObject<dynamic>(r.Html);
+
                 //获取返回的json，解析出需要的ErrorCode，判断当前状态
                 var ErrorCode = res["ErrorCode"].ToString();
                 //0表示登录状态正常，其他表示异常。
@@ -492,10 +500,22 @@ namespace QIC.Sport.Odds.Collector.Ibc.Taker
                 logger.Error(e.ToString());
             }
         }
-        public static long ToUnixTimeSpan(DateTime date)
+
+        private static long ToUnixTimeSpan(DateTime date)
         {
             var startTime = TimeZone.CurrentTimeZone.ToLocalTime(new DateTime(1970, 1, 1)); // 当地时区
             return (long)(date - startTime).TotalMilliseconds; // 相差毫秒数
+        }
+
+        private string GetGid()
+        {
+            Random rd = new Random();
+            return u(rd) + u(rd) + u(rd) + u(rd);
+        }
+
+        private string u(Random rd)
+        {
+            return Convert.ToString((int)Math.Floor(65536 * (1 + rd.NextDouble())), 16).Substring(1);
         }
     }
 }
