@@ -449,6 +449,7 @@ namespace QIC.Sport.Odds.Collector.Ibc.Taker
                 {
                     URL = url + "/LoginCheckin/Index",
                     Method = "POST",
+                    ContentType = "application/x-www-form-urlencoded",
                     Accept = "application/json, text/javascript, */*; q=0.01",
                     UserAgent = userAgent,
                     Referer = url + "/sports",
